@@ -26,7 +26,8 @@ RTL="rtl/reusable/video/video_timing_gen.sv \
      rtl/reusable/cfg/cfg_regs.sv \
      rtl/reusable/cfg/cfg_cdc.sv \
      rtl/reusable/cfg/cfg_commit.sv \
-     boards/common/dvi_tmds_encoder.sv"
+     boards/common/dvi_tmds_encoder.sv \
+     rtl/control/gpio_button_ctrl.sv"
 
 rc=0
 
@@ -62,6 +63,9 @@ build_run cfg_atomic tb_cfg_atomic sim/tb_cfg_atomic.sv                         
 
 # DVI TMDS encoder (round-trip + control tokens + DC balance)
 build_run tmds tb_dvi_tmds_encoder sim/tb_dvi_tmds_encoder.sv                       || rc=1
+
+# Button control (debounce + pattern cycle/wrap)
+build_run gpio tb_gpio_button_ctrl sim/tb_gpio_button_ctrl.sv                       || rc=1
 
 if [ "$rc" -eq 0 ]; then echo "SIM OK"; else echo "SIM FAILED"; fi
 exit "$rc"

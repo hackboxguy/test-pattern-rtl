@@ -17,6 +17,16 @@ jobs:
       - name: Lint portable RTL
         run: ./flow/lint/run_lint.sh
 
+  yosys-smoke:
+    name: Yosys read_verilog smoke
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Yosys
+        run: sudo apt-get update && sudo apt-get install -y yosys
+      - name: Yosys-tested subset smoke
+        run: ./flow/lint/yosys_smoke.sh
+
   provenance:
     name: Clean-room / provenance check
     runs-on: ubuntu-24.04

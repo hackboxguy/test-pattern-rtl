@@ -1,0 +1,28 @@
+// test-pattern-rtl — Tang Nano 9K physical constraints (GW1NR-9C).
+// Pin map verified against Sipeed TangNano-9K-example/hdmi/src/hdmi.cst.
+// TLVDS differential pairs use "IO_LOC <p_net> <Ppin>,<Npin>;" — the TLVDS_OBUF
+// OB (the *_n net) is auto-paired, so only the *_p nets are constrained here.
+// (If your nextpnr-himbaechel/apicula version requires the *_n nets constrained
+//  or absent, adjust per the board README.)
+
+// HDMI TMDS data pairs
+IO_LOC "tmds_d_p[0]" 71,70;
+IO_PORT "tmds_d_p[0]" PULL_MODE=NONE DRIVE=8;
+IO_LOC "tmds_d_p[1]" 73,72;
+IO_PORT "tmds_d_p[1]" PULL_MODE=NONE DRIVE=8;
+IO_LOC "tmds_d_p[2]" 75,74;
+IO_PORT "tmds_d_p[2]" PULL_MODE=NONE DRIVE=8;
+
+// HDMI TMDS clock pair
+IO_LOC "tmds_clk_p" 69,68;
+IO_PORT "tmds_clk_p" PULL_MODE=NONE DRIVE=8;
+
+// 27 MHz oscillator
+IO_LOC "clk" 52;
+IO_PORT "clk" IO_TYPE=LVCMOS33 PULL_MODE=UP;
+
+// Buttons (active-low). S1 = reset, S2 = pattern cycle.
+IO_LOC "resetn" 4;
+IO_PORT "resetn" PULL_MODE=UP;
+IO_LOC "key" 3;
+IO_PORT "key" PULL_MODE=UP;

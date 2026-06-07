@@ -17,21 +17,28 @@ module dvi_tmds_encoder (
     input  logic       de,         // 1 = active video, 0 = blanking
     output logic [9:0] dout
 );
-    function automatic logic [3:0] ones8(input logic [7:0] v);
-        logic [3:0] s;
-        s = '0;
-        for (int i = 0; i < 8; i++) s += 4'(v[i]);
-        return s;
+    // Verilog-2001-style functions (accepted by both Verilator and Yosys read).
+    function [3:0] ones8(input [7:0] v);
+        integer i;
+        reg [3:0] s;
+        begin
+            s = 4'd0;
+            for (i = 0; i < 8; i = i + 1) s = s + 4'(v[i]);
+            ones8 = s;
+        end
     endfunction
 
     // Transition-minimised 9-bit word (XOR or XNOR chain).
-    function automatic logic [8:0] tmin(input logic [7:0] d, input logic xm);
-        logic [8:0] q;
-        q[0] = d[0];
-        for (int i = 1; i < 8; i++)
-            q[i] = xm ? ~(q[i-1] ^ d[i]) : (q[i-1] ^ d[i]);
-        q[8] = xm ? 1'b0 : 1'b1;
-        return q;
+    function [8:0] tmin(input [7:0] d, input xm);
+        integer i;
+        reg [8:0] q;
+        begin
+            q[0] = d[0];
+            for (i = 1; i < 8; i = i + 1)
+                q[i] = xm ? ~(q[i-1] ^ d[i]) : (q[i-1] ^ d[i]);
+            q[8] = xm ? 1'b0 : 1'b1;
+            tmin = q;
+        end
     endfunction
 
     // ---- Stage 1: transition minimisation (combinational) ----

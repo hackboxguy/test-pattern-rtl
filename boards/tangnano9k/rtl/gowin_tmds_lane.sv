@@ -1,23 +1,18 @@
 // SPDX-License-Identifier: MIT
 // test-pattern-rtl — Tier 4 (Tang Nano 9K) — gowin_tmds_lane
 //
-// One TMDS lane: 10:1 DDR serialization of a TMDS-encoded word followed by a
-// true-LVDS differential output buffer. Instantiates Gowin GW1NR-9C primitives
-// (OSER10, TLVDS_OBUF) -> NOT Verilator-lintable, NOT validated in this repo.
-//
-// !! UNVERIFIED on hardware. Confirm OSER10 / TLVDS_OBUF port names and behavior
-//    against the Gowin Primitives User Guide (SUG283) before relying on it.
-//    TMDS words are transmitted LSB-first, so D0 = data[0].
+// 10:1 DDR serializer for one TMDS data channel (Gowin OSER10). The differential
+// output buffers (TLVDS_OBUF) are instantiated once, vectored, in the top so the
+// TMDS clock channel can carry the pixel clock directly (matching the apicula
+// DVI example). NOT Verilator-lintable; validated via the open Gowin flow.
+// TMDS words go out LSB-first, so D0 = data[0].
 module gowin_tmds_lane (
     input  logic       pclk,    // pixel clock
-    input  logic       fclk,    // 5x serial clock (DDR -> 10 bits/pixel)
+    input  logic       fclk,    // 5x serial clock
     input  logic       rst,     // active-high
-    input  logic [9:0] data,    // TMDS 10-bit word (LSB first on the wire)
-    output logic       tmds_p,
-    output logic       tmds_n
+    input  logic [9:0] data,    // TMDS 10-bit word
+    output logic       ser      // serialized output (to TLVDS_OBUF.I)
 );
-    logic ser;
-
     OSER10 u_ser (
         .Q   (ser),
         .D0  (data[0]), .D1(data[1]), .D2(data[2]), .D3(data[3]), .D4(data[4]),
@@ -25,11 +20,5 @@ module gowin_tmds_lane (
         .PCLK(pclk),
         .FCLK(fclk),
         .RESET(rst)
-    );
-
-    TLVDS_OBUF u_obuf (
-        .I (ser),
-        .O (tmds_p),
-        .OB(tmds_n)
     );
 endmodule

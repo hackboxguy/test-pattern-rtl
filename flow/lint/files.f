@@ -1,12 +1,18 @@
 # Verilator/tooling file list for the portable RTL (run from repo root).
-# Used by lint and (later) sim/synth flows.
+# Used by sim/synth flows. (run_lint.sh discovers files directly.)
 +incdir+rtl/reusable/pattern
++incdir+rtl/reusable/video
 
-# Tier 0 — pattern core
+# Tier 0 — pattern core + patterns
 rtl/reusable/pattern/pattern_pixel_core.sv
+rtl/reusable/pattern/patterns/pat_color_bars.sv
+rtl/reusable/pattern/patterns/pat_ramp.sv
+rtl/reusable/pattern/patterns/pat_checker.sv
+rtl/reusable/pattern/patterns/pat_grid.sv
 
 # Tier 1/2 — video
 rtl/reusable/video/video_timing_gen.sv
+rtl/reusable/video/video_source_core.sv
 rtl/reusable/video/video_delay.sv
 rtl/reusable/video/timing_measure.sv
 rtl/reusable/video/timing_source_mux.sv

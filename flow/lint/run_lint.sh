@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Verilator -Wall lint gate for the portable RTL (PRD §13, §15).
-# Lints each module standalone (all M0 modules are leaf modules).
+# Each module is linted as the top of its own hierarchy, with all sources
+# provided so submodules resolve.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -11,19 +12,21 @@ if ! command -v verilator >/dev/null 2>&1; then
     exit 127
 fi
 
-INCDIRS="+incdir+rtl/reusable/pattern"
+INC="+incdir+rtl/reusable/pattern +incdir+rtl/reusable/video"
 mapfile -t FILES < <(find rtl -name '*.sv' | sort)
 
 rc=0
 for f in "${FILES[@]}"; do
-    echo "== verilator --lint-only -Wall ${f} =="
-    if ! verilator --lint-only -Wall -sv ${INCDIRS} "${f}"; then
+    mod="$(basename "$f" .sv)"
+    echo "== verilator --lint-only -Wall --top-module ${mod} =="
+    # shellcheck disable=SC2086
+    if ! verilator --lint-only -Wall -sv ${INC} --top-module "${mod}" "${FILES[@]}"; then
         rc=1
     fi
 done
 
 if [ "${rc}" -eq 0 ]; then
-    echo "LINT OK (${#FILES[@]} files)"
+    echo "LINT OK (${#FILES[@]} modules)"
 else
     echo "LINT FAILED"
 fi

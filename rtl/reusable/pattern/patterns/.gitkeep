@@ -1,0 +1,2 @@
+# M1: one file per pattern (gray, color_bars, ramp_h/v, checker, checker_1px, grid).
+# IDs are defined in ../pattern_ids.svh. Kept empty in M0.

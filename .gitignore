@@ -1,0 +1,17 @@
+# Verilator
+obj_dir/
+*.vcd
+*.fst
+
+# Simulation / build artifacts
+sim/build/
+sim/__pycache__/
+*.ppm
+!sim/golden/*.ppm
+
+# Toolchain outputs
+*.json
+*.bit
+*.fs
+*.asc
+*.bin

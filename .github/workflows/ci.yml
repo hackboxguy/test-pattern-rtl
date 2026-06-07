@@ -1,0 +1,26 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    name: Verilator lint (-Wall)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Verilator
+        run: sudo apt-get update && sudo apt-get install -y verilator
+      - name: Show Verilator version
+        run: verilator --version
+      - name: Lint portable RTL
+        run: ./flow/lint/run_lint.sh
+
+  provenance:
+    name: Clean-room / provenance check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Provenance gate
+        run: ./flow/provenance_check.sh

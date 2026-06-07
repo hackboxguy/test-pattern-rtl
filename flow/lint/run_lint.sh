@@ -13,7 +13,9 @@ if ! command -v verilator >/dev/null 2>&1; then
 fi
 
 INC="+incdir+rtl/reusable/pattern +incdir+rtl/reusable/video"
-mapfile -t FILES < <(find rtl -name '*.sv' | sort)
+# Portable RTL + vendor-neutral board-common logic (DVI TMDS encoder, etc.).
+# Vendor-specific board code (boards/<vendor>/) needs the vendor flow, not Verilator.
+mapfile -t FILES < <(find rtl boards/common -name '*.sv' | sort)
 
 rc=0
 for f in "${FILES[@]}"; do

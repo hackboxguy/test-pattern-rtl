@@ -25,7 +25,8 @@ RTL="rtl/reusable/video/video_timing_gen.sv \
      rtl/reusable/cfg/cfg_pipe.sv \
      rtl/reusable/cfg/cfg_regs.sv \
      rtl/reusable/cfg/cfg_cdc.sv \
-     rtl/reusable/cfg/cfg_commit.sv"
+     rtl/reusable/cfg/cfg_commit.sv \
+     boards/common/dvi_tmds_encoder.sv"
 
 rc=0
 
@@ -58,6 +59,9 @@ build_run pat_101x53 tb_pattern_core sim/tb_pattern_core.sv -GH=101 -GV=53      
 
 # Config atomicity (cross-domain shadow -> latch-on-sof commit)
 build_run cfg_atomic tb_cfg_atomic sim/tb_cfg_atomic.sv                             || rc=1
+
+# DVI TMDS encoder (round-trip + control tokens + DC balance)
+build_run tmds tb_dvi_tmds_encoder sim/tb_dvi_tmds_encoder.sv                       || rc=1
 
 if [ "$rc" -eq 0 ]; then echo "SIM OK"; else echo "SIM FAILED"; fi
 exit "$rc"

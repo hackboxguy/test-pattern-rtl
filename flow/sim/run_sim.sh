@@ -21,7 +21,11 @@ RTL="rtl/reusable/video/video_timing_gen.sv \
      rtl/reusable/pattern/patterns/pat_checker.sv \
      rtl/reusable/pattern/patterns/pat_grid.sv \
      rtl/reusable/pattern/pattern_pixel_core.sv \
-     rtl/reusable/video/video_source_core.sv"
+     rtl/reusable/video/video_source_core.sv \
+     rtl/reusable/cfg/cfg_pipe.sv \
+     rtl/reusable/cfg/cfg_regs.sv \
+     rtl/reusable/cfg/cfg_cdc.sv \
+     rtl/reusable/cfg/cfg_commit.sv"
 
 rc=0
 
@@ -51,6 +55,9 @@ build_run vtg_101x53 tb_video_timing_gen sim/tb_video_timing_gen.sv -GH=101 -GV=
 build_run pat_32x24  tb_pattern_core sim/tb_pattern_core.sv                         || rc=1
 build_run pat_13x7   tb_pattern_core sim/tb_pattern_core.sv -GH=13 -GV=7            || rc=1
 build_run pat_101x53 tb_pattern_core sim/tb_pattern_core.sv -GH=101 -GV=53          || rc=1
+
+# Config atomicity (cross-domain shadow -> latch-on-sof commit)
+build_run cfg_atomic tb_cfg_atomic sim/tb_cfg_atomic.sv                             || rc=1
 
 if [ "$rc" -eq 0 ]; then echo "SIM OK"; else echo "SIM FAILED"; fi
 exit "$rc"

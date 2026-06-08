@@ -15,12 +15,13 @@ DEVICE="GW1NR-LV9QN88PC6/I5"   # nextpnr-gowin part string (Tang Nano 9K)
 FAMILY="GW1N-9C"               # nextpnr --family / gowin_pack -d
 TOP="top_tangnano9k"
 
-# Resolution: RES=480p (default) or RES=720p
+# Resolution: RES=480p (default), 720p, or 1080p
 RES="${RES:-480p}"
 case "$RES" in
-  480p) DEFINES="" ;;
-  720p) DEFINES="-DBUILD_720P" ;;
-  *) echo "ERROR: RES must be 480p or 720p (got '$RES')"; exit 1 ;;
+  480p)  DEFINES="" ;;
+  720p)  DEFINES="-DBUILD_720P" ;;
+  1080p) DEFINES="-DBUILD_1080P" ;;
+  *) echo "ERROR: RES must be 480p, 720p, or 1080p (got '$RES')"; exit 1 ;;
 esac
 echo "Resolution: ${RES}"
 

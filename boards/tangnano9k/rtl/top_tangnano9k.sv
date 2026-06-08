@@ -24,8 +24,10 @@ module top_tangnano9k (
     output logic       tmds_clk_p,
     output logic       tmds_clk_n
 );
-    // ---- resolution select (default 640x480p60; define BUILD_720P for 720p60) ----
-`ifdef BUILD_720P
+    // ---- resolution select (default 480p; -DBUILD_720P or -DBUILD_1080P) ----
+`ifdef BUILD_1080P
+    localparam int PLL_IDIV = 1, PLL_FBDIV = 54, PLL_ODIV = 2;   // 742.5 MHz serial (VCO 1485 -> out of range!)
+`elsif BUILD_720P
     localparam int PLL_IDIV = 3, PLL_FBDIV = 54, PLL_ODIV = 2;   // 371.25 MHz serial
 `else
     localparam int PLL_IDIV = 2, PLL_FBDIV = 13, PLL_ODIV = 4;   // 126.0 MHz serial
@@ -54,7 +56,9 @@ module top_tangnano9k (
     logic [11:0] x0, y;
     logic [23:0] frame, rgb;
     video_source_core #(
-`ifdef BUILD_720P
+`ifdef BUILD_1080P
+        `VMODE_1920x1080p60,
+`elsif BUILD_720P
         `VMODE_1280x720p60,
 `else
         `VMODE_640x480p60,

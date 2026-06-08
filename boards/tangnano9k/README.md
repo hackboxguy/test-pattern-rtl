@@ -57,11 +57,25 @@ patterns; **S1** resets. 480p is confirmed working on hardware; 720p meets timin
 Default 640x480p60. To go higher, set the `VMODE_*` macro in
 `top_tangnano9k.sv` **and** the rPLL dividers in `gowin_tmds_clkgen.sv`:
 
-| Mode | pixel / serial | IDIV / FBDIV / ODIV | Notes |
+Build with `RES=480p|720p|1080p ./boards/tangnano9k/flow/build.sh`.
+
+| Mode | pixel / serial | IDIV / FBDIV / ODIV | Status |
 |---|---|---|---|
-| 640x480p60  | 25.2 / 126.0 MHz   | 2 / 13 / 4 | default (apicula PLL480) |
-| 1280x720p60 | 74.25 / 371.25 MHz | 3 / 54 / 2 | must-pass target; re-verify timing |
-| 1920x1080p60| 148.5 / 742.5 MHz  | —          | serial exceeds rPLL VCO range; stretch (PRD risk) |
+| 640x480p60  | 25.2 / 126.0 MHz   | 2 / 13 / 4 | ✅ hardware-confirmed |
+| 1280x720p60 | 74.25 / 371.25 MHz | 3 / 54 / 2 | ✅ hardware-confirmed (3-stage encoder, Fmax ~94 MHz) |
+| 1920x1080p60| 148.5 / 742.5 MHz  | 1 / 54 / 2 | ❌ **NOT BUILDABLE** on this board |
+
+**1080p60 is not achievable on the Tang Nano 9K (GW1NR-9C)** — a hard limit, not a
+tuning issue:
+- rPLL CLKOUT max is **600 MHz**; 742.5 MHz serial is rejected by gowin_pack
+  (`CLKOUT = 742.5MHz not in range 3.125 - 600MHz`).
+- Even ignoring that, the fabric Fmax (~94 MHz) is far below the 148.5 MHz pixel
+  clock 1080p needs.
+
+720p60 is the practical maximum for this board. A 1080p monitor still displays
+720p (upscaled). Native 1080p needs a more capable FPGA — the portable core is
+resolution-independent (sim-verified at arbitrary geometries), so the same RTL
+runs at 1080p on a board whose PLL/serializer can reach 1.485 Gb/s.
 
 ## Pin map (verified vs Sipeed example)
 

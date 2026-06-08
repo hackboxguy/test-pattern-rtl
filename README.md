@@ -100,7 +100,13 @@ make report                                   # or:
   pixel clock : 65 MHz      TMDS serial (bit) clock : 325.0 MHz
   timing      : pixel_clk Fmax 86.93 MHz  (target 65 MHz, +34% margin)
   clock route : serial_clk OK
-  resources   :  LUT4 1109/8640 (12%) · DFF 267/6480 (4%) · MULT18X18 2/20 · rPLL 1/2 …
+  resources   :
+      ALU            474 / 6480     7%
+      DFF            267 / 6480     4%
+      LUT4          1109 / 8640    12%
+      MULT18X18        2 / 20      10%
+      rPLL             1 / 2       50%
+      ...
 ```
 
 ## License

@@ -143,8 +143,9 @@ SERIALCLK=$(awk "BEGIN{printf \"%.1f\", ${PIXFREQ}*5}")
   fi
   echo "  resources   :"   # non-zero usage only (drops the long list of unused primitives)
   grep -E ":[[:space:]]+[1-9][0-9]*/[[:space:]]*[0-9]+[[:space:]]+[0-9]+%" "${OUT}/pnr.log" \
-    | grep -vE "(VCC|GND|GSR):" \
-    | sed -E 's/^Info:[[:space:]]*/      /' | sort -u
+    | grep -vE "(VCC|GND|GSR):" | sort -u \
+    | awk '{ n=$2; sub(/:$/,"",n); u=$3; sub(/\/$/,"",u);
+             printf "      %-11s %6s / %-6s %4s\n", n, u, $4, $5 }' | sort -f
   echo "  bitstream   : ${OUT}/${TOP}.fs"
   echo "========================================================================="
 } | tee "${OUT}/report.txt"

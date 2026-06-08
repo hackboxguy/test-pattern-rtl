@@ -49,9 +49,16 @@ case "$RES" in
   1024x768) DEFINES="-DBUILD_1024X768"; PIXFREQ=65 ;;
   720rb)    DEFINES="-DBUILD_720P_RB";  PIXFREQ=64 ;;
   720p)     DEFINES="-DBUILD_720P";     PIXFREQ=74.25 ;;
+  1920x720) DEFINES="-DBUILD_1920X720"; PIXFREQ=91.8; EXPERIMENTAL=1 ;;  # exceeds the board PHY
   1080p)    DEFINES="-DBUILD_1080P";    PIXFREQ=148.5 ;;
-  *) echo "ERROR: RES must be 480p, 800x600, 1024x768, 720rb, 720p, or 1080p (got '$RES')"; exit 1 ;;
+  *) echo "ERROR: RES must be 480p, 800x600, 1024x768, 720rb, 1920x720, 720p, or 1080p (got '$RES')"; exit 1 ;;
 esac
+EXPERIMENTAL="${EXPERIMENTAL:-0}"
+[ "${EXPERIMENTAL}" = "1" ] && {
+  echo "!! EXPERIMENTAL ${RES}: ~$(awk "BEGIN{printf \"%.0f\", ${PIXFREQ}*5}") MHz serial exceeds the Tang Nano 9K"
+  echo "!! emulated-LVDS clean ceiling (~325 MHz). Building for a future faster-serializer board;"
+  echo "!! not expected to display cleanly here. Timing/clock gates are advisory for this target."
+}
 # Optional 720p PHY experiments (Codex v2): SERIALIZE_CLK=1, CLK_ALT=1.
 [ "${SERIALIZE_CLK:-0}" = "1" ] && DEFINES="${DEFINES} -DSERIALIZE_TMDS_CLK"
 [ "${CLK_ALT:-0}" = "1" ]       && DEFINES="${DEFINES} -DTMDS_CLK_ALT"
@@ -120,7 +127,8 @@ fmax=$(grep -oE "Max frequency for clock 'pixel_clk': [0-9.]+" "${OUT}/pnr.log" 
 if [ -n "${fmax}" ]; then
   echo "pixel_clk Fmax (worst): ${fmax} MHz  (need ${PIXFREQ} MHz)"
   awk "BEGIN{exit !(${fmax} >= ${PIXFREQ})}" || {
-    echo "TIMING FAIL: pixel_clk Fmax ${fmax} MHz < ${PIXFREQ} MHz target"; exit 1; }
+    echo "TIMING FAIL: pixel_clk Fmax ${fmax} MHz < ${PIXFREQ} MHz target"
+    [ "${EXPERIMENTAL}" = "1" ] && echo "  (EXPERIMENTAL ${RES}: packing anyway for a future board)" || exit 1; }
 else
   echo "WARNING: could not parse pixel_clk Fmax from pnr log"
 fi

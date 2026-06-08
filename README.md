@@ -142,6 +142,7 @@ the RTL (details in [boards/tangnano9k/README.md](boards/tangnano9k/README.md)):
 | `1024x768` | 1024×768p60 / XGA (4:3) | 65 / 325 MHz | ✅ **clean — highest confirmed** |
 | `720rb` | 1280×720p60 reduced-blank (16:9) | 64.8 / 324 MHz | ⚠️ marginal (short blanking; needs a tolerant sink) |
 | `720p` | 1280×720p60 (16:9) | 74.25 / 371 MHz | ❌ above the ELVDS cliff (artifacts) |
+| `1920x720` | 1920×720p60 (1D-dimming panel, 40-LED) | ~92 / ~459 MHz | ❌ builds & closes fabric timing, but **~40 % over the ELVDS cliff** — wired for a future faster-serializer board (`ZONES=40`) |
 | `1080p` | 1920×1080p60 (16:9) | 148.5 / 742.5 MHz | ❌ not buildable (rPLL caps at 600 MHz) |
 
 **P&R seed is pinned** (`NEXTPNR_SEED=2`) so placement — and clock quality near the

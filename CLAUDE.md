@@ -16,7 +16,7 @@ for later milestones.
 make check            # or: make lint / make yosys-smoke / make provenance / make sim
 
 # Tang Nano 9K bitstream (auto-activates OSS CAD Suite from ~/oss-cad-suite etc.)
-RES=480p ./boards/tangnano9k/flow/build.sh           # default; also 800x600 / 1024x768 / 720rb / 720p / 1080p
+RES=480p ./boards/tangnano9k/flow/build.sh           # default; also 800x600 / 1024x768 / 720rb / 1920x720 / 720p / 1080p
 openFPGALoader -b tangnano9k boards/tangnano9k/build/top_tangnano9k.fs
 make report                                          # last build's timing + resource report (no rebuild)
 ```

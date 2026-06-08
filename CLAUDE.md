@@ -67,9 +67,15 @@ per-line recovery at high rate. The same core runs higher on a true-LVDS board.
   rejects `function automatic logic [N]` — encoder functions are Verilog-2001 style.
 - **`PATSEL_W=5`** (24 patterns; was 4 → caused CASEOVERLAP/aliasing).
 - **build.sh:** passes `--freq <pixel MHz>` (real timing target, not 12 MHz default)
-  + post-build Fmax gate; `NEXTPNR_SEED=<n>` for reproducible placement; fails a
-  720p build whose `serial_clk` can't route on dedicated routing. Resolution is a
-  compile-time macro (`-DBUILD_720P` etc.) + matching rPLL dividers in top.
+  + post-build Fmax gate. Resolution is a compile-time macro (`-DBUILD_720P` etc.)
+  + matching rPLL dividers in top.
+- **P&R seed is PINNED by default (`NEXTPNR_SEED=2`).** A random seed (`-r`) made
+  placement — and thus clock routing near the cliff — a lottery: an unlucky seed
+  gives `serial_clk` a non-dedicated route ("Failed to route net 'serial_clk' …
+  using dedicated routing") → a marginal clock the **monitor is slow to lock**
+  onto (data is clean once locked). The build **fails** that condition for all
+  high-rate modes (800x600/XGA/720rb/720p). Override `NEXTPNR_SEED=<n>` to sweep,
+  `=r` for random. (Symptom if you see it: minute-long black screen before lock.)
 - **1080p is physically impossible here** (742.5 MHz > rPLL 600 MHz max).
 
 ## Pattern IDs (pattern_ids.svh, PAT_COUNT=24)

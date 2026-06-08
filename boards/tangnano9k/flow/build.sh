@@ -37,11 +37,12 @@ TOP="top_tangnano9k"
 # Resolution: RES=480p (default), 720p, or 1080p. PIXFREQ = real pixel clock (MHz).
 RES="${RES:-480p}"
 case "$RES" in
-  480p)    DEFINES="";                PIXFREQ=25.2 ;;
-  800x600) DEFINES="-DBUILD_800X600"; PIXFREQ=40 ;;
-  720p)    DEFINES="-DBUILD_720P";    PIXFREQ=74.25 ;;
-  1080p)   DEFINES="-DBUILD_1080P";   PIXFREQ=148.5 ;;
-  *) echo "ERROR: RES must be 480p, 800x600, 720p, or 1080p (got '$RES')"; exit 1 ;;
+  480p)     DEFINES="";                 PIXFREQ=25.2 ;;
+  800x600)  DEFINES="-DBUILD_800X600";  PIXFREQ=40 ;;
+  1024x768) DEFINES="-DBUILD_1024X768"; PIXFREQ=65 ;;
+  720p)     DEFINES="-DBUILD_720P";     PIXFREQ=74.25 ;;
+  1080p)    DEFINES="-DBUILD_1080P";    PIXFREQ=148.5 ;;
+  *) echo "ERROR: RES must be 480p, 800x600, 1024x768, 720p, or 1080p (got '$RES')"; exit 1 ;;
 esac
 # Optional 720p PHY experiments (Codex v2): SERIALIZE_CLK=1, CLK_ALT=1.
 [ "${SERIALIZE_CLK:-0}" = "1" ] && DEFINES="${DEFINES} -DSERIALIZE_TMDS_CLK"

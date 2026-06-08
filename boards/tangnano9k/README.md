@@ -67,12 +67,17 @@ sufficient at 720p; the emulated-LVDS link itself is the real limiter.
 Default 640x480p60. To go higher, set the `VMODE_*` macro in
 `top_tangnano9k.sv` **and** the rPLL dividers in `gowin_tmds_clkgen.sv`:
 
-Build with `RES=480p|720p|1080p ./boards/tangnano9k/flow/build.sh`.
+Build with `RES=480p|800x600|1024x768|720p|1080p ./boards/tangnano9k/flow/build.sh`.
+
+The clean/marginal boundary is the emulated-LVDS **serial bit rate**, not the
+fabric: ~200 MHz is clean, ~371 MHz is not.
 
 | Mode | pixel / serial | IDIV / FBDIV / ODIV | Status |
 |---|---|---|---|
-| 640x480p60  | 25.2 / 126.0 MHz   | 2 / 13 / 4 | ✅ all patterns clean (recommended) |
-| 1280x720p60 | 74.25 / 371.25 MHz | 3 / 54 / 2 | ⚠️ marginal on ELVDS (gradient/transition artifacts) |
+| 640x480p60   | 25.2 / 126.0 MHz   | 2 / 13 / 4 | ✅ clean (safe baseline) |
+| 800x600p60   | ~40 / ~200 MHz     | 4 / 36 / 4 | ✅ **clean — recommended higher-res mode** |
+| 1024x768p60  | ~65 / ~325 MHz     | 0 / 11 / 2 | ⚠️ probe (near the cliff; verify on hardware) |
+| 1280x720p60  | 74.25 / 371.25 MHz | 3 / 54 / 2 | ⚠️ marginal on ELVDS (gradient/transition artifacts) |
 | 1920x1080p60| 148.5 / 742.5 MHz  | 1 / 54 / 2 | ❌ **NOT BUILDABLE** on this board |
 
 **1080p60 is not achievable on the Tang Nano 9K (GW1NR-9C)** — a hard limit, not a

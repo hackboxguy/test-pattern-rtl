@@ -88,10 +88,28 @@ module top_tangnano9k (
     gowin_tmds_lane u_l1 (.pclk(pixel_clk), .fclk(serial_clk), .rst(rst_pix), .data(q1), .ser(ser[1]));
     gowin_tmds_lane u_l2 (.pclk(pixel_clk), .fclk(serial_clk), .rst(rst_pix), .data(q2), .ser(ser[2]));
 
-    // ---- differential outputs: 3 data + clock (clock = pixel clock) ----
+    // ---- TMDS clock channel ----
+    // Default: forward the pixel clock directly (proven at 480p).
+    // -DSERIALIZE_TMDS_CLK: serialize it through a 4th OSER10 so the clock lane
+    //   matches the data lanes' output path/phase (helps clock/data skew at 720p).
+    //   -DTMDS_CLK_ALT flips the 10-bit clock pattern (phase depends on bit order).
+    logic clk_lane;
+`ifdef SERIALIZE_TMDS_CLK
+  `ifdef TMDS_CLK_ALT
+    localparam logic [9:0] TMDS_CLK_WORD = 10'b0000011111;
+  `else
+    localparam logic [9:0] TMDS_CLK_WORD = 10'b1111100000;
+  `endif
+    gowin_tmds_lane u_lc (.pclk(pixel_clk), .fclk(serial_clk), .rst(rst_pix),
+                          .data(TMDS_CLK_WORD), .ser(clk_lane));
+`else
+    assign clk_lane = pixel_clk;
+`endif
+
+    // ---- differential outputs: 3 data + clock ----
     // Tang Nano 9K HDMI pins are EMULATED LVDS -> ELVDS_OBUF (not TLVDS_OBUF).
     ELVDS_OBUF tmds_buf [3:0] (
-        .I ({pixel_clk,  ser}),
+        .I ({clk_lane,   ser}),
         .O ({tmds_clk_p, tmds_d_p}),
         .OB({tmds_clk_n, tmds_d_n})
     );

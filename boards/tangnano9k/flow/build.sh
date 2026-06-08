@@ -42,7 +42,10 @@ case "$RES" in
   1080p) DEFINES="-DBUILD_1080P"; PIXFREQ=148.5 ;;
   *) echo "ERROR: RES must be 480p, 720p, or 1080p (got '$RES')"; exit 1 ;;
 esac
-echo "Resolution: ${RES}  (pixel_clk target ${PIXFREQ} MHz)"
+# Optional 720p PHY experiments (Codex v2): SERIALIZE_CLK=1, CLK_ALT=1.
+[ "${SERIALIZE_CLK:-0}" = "1" ] && DEFINES="${DEFINES} -DSERIALIZE_TMDS_CLK"
+[ "${CLK_ALT:-0}" = "1" ]       && DEFINES="${DEFINES} -DTMDS_CLK_ALT"
+echo "Resolution: ${RES}  (pixel_clk target ${PIXFREQ} MHz)   DEFINES='${DEFINES}'"
 
 SRC=(
   rtl/reusable/pattern/patterns/pat_color_bars.sv
@@ -67,17 +70,34 @@ READ=""
 for f in "${SRC[@]}"; do READ="${READ} read_verilog -sv ${DEFINES} ${INCDIRS} ${f};"; done
 yosys -p "${READ} synth_gowin -top ${TOP} -json ${OUT}/${TOP}.json"
 
-echo "== place & route (nextpnr-himbaechel, timing-driven at ${PIXFREQ} MHz) =="
+# Placement seed: NEXTPNR_SEED=<n> for a reproducible build (recommended for
+# hardware debug); otherwise a random seed (-r). The seed strongly affects the
+# 720p clock/output routing quality (Codex v2).
+SEED_ARG="-r"
+[ -n "${NEXTPNR_SEED:-}" ] && SEED_ARG="--seed ${NEXTPNR_SEED}"
+
+echo "== place & route (nextpnr-himbaechel, timing-driven at ${PIXFREQ} MHz, ${SEED_ARG}) =="
 # --freq sets the target for the (otherwise-unconstrained) pixel-clock domain so
 # placement/routing is timing-driven at the real pixel clock, not the 12 MHz
 # default. --timing-allow-fail keeps the run going so we can report Fmax; the
-# post-build check below turns an under-target Fmax into a hard failure.
-nextpnr-himbaechel --timing-allow-fail -r --freq "${PIXFREQ}" \
+# post-build checks below turn an under-target Fmax or a marginal serial-clock
+# route into a hard failure.
+# shellcheck disable=SC2086
+nextpnr-himbaechel --timing-allow-fail ${SEED_ARG} --freq "${PIXFREQ}" \
   --json "${OUT}/${TOP}.json" \
   --write "${OUT}/${TOP}_pnr.json" \
   --device "${DEVICE}" \
   --vopt family="${FAMILY}" \
   --vopt cst=boards/tangnano9k/hdmi.cst 2>&1 | tee "${OUT}/pnr.log"
+
+# Serial-clock dedicated-route quality: at 720p, serial_clk (371 MHz) feeds both
+# the OSER10 FCLK and CLKDIV. A non-dedicated route here is a strong predictor of
+# marginal/garbled 720p output -- fail the build so we don't flash it.
+if grep -q "Failed to route net 'serial_clk'" "${OUT}/pnr.log"; then
+  echo "TIMING/CLOCK FAIL: serial_clk did not use dedicated routing (marginal clocking)."
+  echo "                   Re-run with a different NEXTPNR_SEED."
+  [ "${RES}" = "720p" ] && exit 1
+fi
 
 # Post-build timing gate: worst reported pixel_clk Fmax must clear the pixel clock.
 fmax=$(grep -oE "Max frequency for clock 'pixel_clk': [0-9.]+" "${OUT}/pnr.log" \

@@ -2,7 +2,7 @@
 
 Drives HDMI (DVI/TMDS) test patterns at **640x480p60** (first light-up).
 27 MHz → Gowin rPLL (CLKOUT = 5× pixel) → CLKDIV(/5) → `video_source_core`
-→ 3× DVI TMDS encoders → Gowin OSER10 serializers → TLVDS HDMI. The TMDS clock
+→ 3× DVI TMDS encoders → Gowin OSER10 serializers → **ELVDS** HDMI. The TMDS clock
 channel carries the pixel clock directly (apicula DVI topology). Button **S2**
 cycles patterns; **S1** resets.
 
@@ -46,7 +46,9 @@ openFPGALoader -b tangnano9k boards/tangnano9k/build/top_tangnano9k.fs
 
 Expected on screen: color bars (upscaled by the monitor). Press **S2** to cycle
 patterns; **S1** resets. 480p is confirmed working on hardware; 720p meets timing
-(Fmax ≈ 78 MHz > 74.25 MHz) — the TMDS encoder is pipelined (latency 2) to close.
+(fabric Fmax ~88-96 MHz, seed-dependent, > 74.25 MHz) — the TMDS encoder is a
+3-stage pipeline (latency 3). Note: fabric timing closing is necessary but not
+sufficient at 720p; the emulated-LVDS link itself is the real limiter.
 
 ## Notes / decisions
 
@@ -55,8 +57,10 @@ patterns; **S1** resets. 480p is confirmed working on hardware; 720p meets timin
   phase, so himbaechel is mandatory for this design.
 - **rPLL `DEVICE` = `"GW1N-9C"`** for the himbaechel flow (matches apicula
   PLL480). (Classic nextpnr-gowin wanted `"GW1NR-9C"` — different checker.)
-- **TMDS clock channel** = pixel clock straight through a TLVDS buffer (no 4th
-  serializer), matching the apicula DVI example.
+- **TMDS clock channel** = pixel clock straight through an ELVDS buffer (no 4th
+  serializer) by default, matching the apicula DVI example. For 720p, building
+  with `SERIALIZE_CLK=1` instead serializes the clock through a 4th OSER10 (same
+  output path/phase as the data lanes) — see the 720p experiments below.
 
 ## Resolution / bring-up ladder
 
@@ -86,5 +90,17 @@ runs at 1080p on a board whose PLL/serializer can reach 1.485 Gb/s.
 ## Pin map (verified vs Sipeed example)
 
 `clk`=52 (27 MHz) · `resetn`=4 (S1) · `key`=3 (S2) · TMDS data 71/70, 73/72,
-75/74 · TMDS clock 69/68. TLVDS pairs constrained on the `*_p` nets (the `*_n`
-auto-pair).
+75/74 · TMDS clock 69/68. Each ELVDS net (`*_p` and `*_n`) is constrained to its
+own pin (himbaechel convention).
+
+## 720p experiments (artifact debugging)
+
+720p builds/displays but is marginal on the board's emulated-LVDS. Build knobs
+to push margin / match the clock and data output paths:
+
+```bash
+# serialize the TMDS clock through a 4th OSER10 (recommended for 720p), fixed seed
+SERIALIZE_CLK=1 NEXTPNR_SEED=2 RES=720p ./boards/tangnano9k/flow/build.sh
+CLK_ALT=1        # also flip the 10-bit clock pattern (clock phase) if needed
+NEXTPNR_SEED=<n> # sweep seeds; the build fails 720p if serial_clk can't route on dedicated routing
+```

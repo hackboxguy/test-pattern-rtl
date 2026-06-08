@@ -55,6 +55,7 @@ SRC=(
   rtl/reusable/pattern/patterns/pat_ramp.sv
   rtl/reusable/pattern/patterns/pat_checker.sv
   rtl/reusable/pattern/patterns/pat_grid.sv
+  rtl/reusable/pattern/patterns/pat_localdim.sv
   rtl/reusable/pattern/pattern_pixel_core.sv
   rtl/reusable/video/video_timing_gen.sv
   rtl/reusable/video/video_delay.sv

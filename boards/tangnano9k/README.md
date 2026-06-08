@@ -20,7 +20,7 @@ source <path-to>/oss-cad-suite/environment
 
 ## Build status
 
-All 18 patterns are clean on real HDMI up to **1024×768p60 (XGA)**. The
+All 24 patterns are clean on real HDMI up to **1024×768p60 (XGA)**. The
 clean/artifact boundary is the emulated-LVDS **serial bit rate**:
 
 | Mode | serial | Hardware result |

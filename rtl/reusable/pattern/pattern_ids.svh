@@ -26,7 +26,14 @@
 `define PAT_RAMP_R      15   // red-only horizontal ramp   (TMDS channel isolation)
 `define PAT_RAMP_G      16   // green-only horizontal ramp (TMDS channel isolation)
 `define PAT_RAMP_B      17   // blue-only horizontal ramp  (TMDS channel isolation)
+// Local-dimming benchmark family (Codex PRD review v3) — pat_localdim sub 0..5.
+`define PAT_LD_WINDOW       18   // centered white window on black (APL / blooming)
+`define PAT_LD_WIN_MOVE     19   // horizontally sweeping window   (dimming tracking)
+`define PAT_LD_CHECKER_ZONE 20   // coarse 8x8 zone checker        (ANSI contrast)
+`define PAT_LD_NEARBLACK    21   // near-black step wedge          (black crush)
+`define PAT_LD_SUBTITLE     22   // subtitle blocks at bottom      (subtitle halo)
+`define PAT_LD_FLASH        23   // full-field black<->white flash (response time)
 
-`define PAT_COUNT       18
+`define PAT_COUNT       24
 
 `endif // PATTERN_IDS_SVH

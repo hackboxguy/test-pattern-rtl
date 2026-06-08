@@ -22,7 +22,7 @@ module pattern_pixel_core #(
     parameter int HCOORD_W         = 12,
     parameter int VCOORD_W         = 12,
     parameter int FRAME_W          = 24,
-    parameter int PATSEL_W         = 5,    // 5 bits addresses the 18-pattern set
+    parameter int PATSEL_W         = 5,    // 5 bits addresses the 24-pattern set
     parameter int NPARAM           = 4,
     parameter int PARAM_W          = 32,
     // pattern geometry / tuning (Mode A, compile-time)
@@ -98,6 +98,18 @@ module pattern_pixel_core #(
     assign stair_val = {(COLOR_W/STAIR_BITS){ramph_rgb[COLOR_W-1 -: STAIR_BITS]}};
     assign stair_rgb = {stair_val, stair_val, stair_val};
 
+    // ---- local-dimming benchmark family (PAT_LD_*; sub = id - PAT_LD_WINDOW) ----
+    // Reuses the ramp_h/ramp_v normalized values (no extra multipliers) and the
+    // frame counter for motion/temporal patterns.
+    logic [3*COLOR_W-1:0] ld_rgb;
+    logic [2:0]           ld_sub;
+    assign ld_sub = 3'(pattern_sel - PATSEL_W'(`PAT_LD_WINDOW));
+    pat_localdim #(.COLOR_W(COLOR_W), .HCOORD_W(HCOORD_W), .VCOORD_W(VCOORD_W),
+                   .FRAME_W(FRAME_W), .H_ACTIVE(H_ACTIVE), .V_ACTIVE(V_ACTIVE))
+        u_localdim (.x(x0), .y(y), .frame(frame),
+                    .norm_x(ramph_rgb[COLOR_W-1:0]), .norm_y(rampv_rgb[COLOR_W-1:0]),
+                    .sub(ld_sub), .rgb(ld_rgb));
+
     // ---- mux by stable pattern ID ----
     logic [3*COLOR_W-1:0] pix;
     always_comb begin
@@ -119,6 +131,12 @@ module pattern_pixel_core #(
             PATSEL_W'(`PAT_RAMP_R):      pix = {ramp_val, CH_LO,    CH_LO};    // red-only
             PATSEL_W'(`PAT_RAMP_G):      pix = {CH_LO,    ramp_val, CH_LO};    // green-only
             PATSEL_W'(`PAT_RAMP_B):      pix = {CH_LO,    CH_LO,    ramp_val}; // blue-only
+            PATSEL_W'(`PAT_LD_WINDOW),
+            PATSEL_W'(`PAT_LD_WIN_MOVE),
+            PATSEL_W'(`PAT_LD_CHECKER_ZONE),
+            PATSEL_W'(`PAT_LD_NEARBLACK),
+            PATSEL_W'(`PAT_LD_SUBTITLE),
+            PATSEL_W'(`PAT_LD_FLASH):    pix = ld_rgb;   // local-dimming family
             default:                     pix = {CH_LO, CH_LO, CH_LO}; // PAT_BLACK + disabled IDs
         endcase
         // Blanking pixels are black (FR-SB-3); disabled core is black.
@@ -136,9 +154,9 @@ module pattern_pixel_core #(
         end
     end
 
-    // Reserved for M1+ / Mode B (animated patterns, runtime geometry, params).
+    // Reserved for M1+ / Mode B (runtime geometry, params).
     logic _unused_ok;
-    assign _unused_ok = &{1'b0, frame, sof, eol, h_active, v_active, param,
+    assign _unused_ok = &{1'b0, sof, eol, h_active, v_active, param,
                           PATTERN_LATENCY[0]};
 
 endmodule

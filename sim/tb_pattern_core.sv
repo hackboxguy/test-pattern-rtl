@@ -21,6 +21,20 @@ module tb_pattern_core #(
     localparam int PITCH = (1 << GP);
     localparam int STAIR_BITS = 4;   // must match pattern_pixel_core
     localparam int STAIR_MUL  = ((1 << COLOR_W) - 1) / ((1 << STAIR_BITS) - 1);  // 255/15 = 17
+    // local-dimming family params (must match pat_localdim)
+    localparam int LDWW   = H / 4;
+    localparam int LDWH   = V / 4;
+    localparam int LDWX0  = (H - LDWW) / 2;
+    localparam int LDWY0  = (V - LDWH) / 2;
+    localparam int LDMTRX = H - LDWW;
+    localparam int LDMAMP = (1 << ($clog2(LDMTRX) - 1));
+    localparam int LDMBASX= (LDMTRX - LDMAMP) / 2;
+    localparam int LDMMASK= 2 * LDMAMP - 1;
+    localparam int LDSBY0 = (V * 7) / 8;
+    localparam int LDSBY1 = LDSBY0 + (V / 16) + 1;
+    localparam int LDB1X0 = H / 8,        LDB1X1 = LDB1X0 + H / 6;
+    localparam int LDB2X0 = (H * 5) / 12, LDB2X1 = LDB2X0 + H / 4;
+    localparam int LDB3X0 = (H * 3) / 4,  LDB3X1 = LDB3X0 + H / 8;
 
     logic clk = 1'b0;
     always #5 clk = ~clk;
@@ -50,9 +64,9 @@ module tb_pattern_core #(
 
     int errors = 0;
 
-    function automatic logic [23:0] ref_pixel(input int pat, input int x, input int yy);
+    function automatic logic [23:0] ref_pixel(input int pat, input int x, input int yy, input int frm);
         logic [7:0] r, g, b;
-        int bar, k, val;
+        int bar, k, val, nx, ny, mph, mtri, mwx0;
         begin
             r = 8'h00; g = 8'h00; b = 8'h00;
             case (pat)
@@ -95,6 +109,40 @@ module tb_pattern_core #(
                 15: begin val = (x * INV_H) >> FRAC; if (val > 255) val = 255; r = 8'(val); end // red-only
                 16: begin val = (x * INV_H) >> FRAC; if (val > 255) val = 255; g = 8'(val); end // green-only
                 17: begin val = (x * INV_H) >> FRAC; if (val > 255) val = 255; b = 8'(val); end // blue-only
+                18: begin // LD_WINDOW
+                        if (x >= LDWX0 && x < LDWX0 + LDWW && yy >= LDWY0 && yy < LDWY0 + LDWH)
+                            begin r = 8'hFF; g = 8'hFF; b = 8'hFF; end
+                    end
+                19: begin // LD_WIN_MOVE
+                        mph  = frm & LDMMASK;
+                        mtri = (mph < LDMAMP) ? mph : (LDMMASK - mph);
+                        mwx0 = LDMBASX + mtri;
+                        if (x >= mwx0 && x < mwx0 + LDWW && yy >= LDWY0 && yy < LDWY0 + LDWH)
+                            begin r = 8'hFF; g = 8'hFF; b = 8'hFF; end
+                    end
+                20: begin // LD_CHECKER_ZONE (8x8)
+                        nx = (x  * INV_H) >> FRAC; if (nx > 255) nx = 255;
+                        ny = (yy * INV_V) >> FRAC; if (ny > 255) ny = 255;
+                        if (((nx >> (COLOR_W-3)) & 1) == ((ny >> (COLOR_W-3)) & 1))
+                            begin r = 8'hFF; g = 8'hFF; b = 8'hFF; end
+                    end
+                21: begin // LD_NEARBLACK step wedge
+                        nx = (x * INV_H) >> FRAC; if (nx > 255) nx = 255;
+                        case ((nx >> (COLOR_W-3)) & 7)
+                            0: val = 0;  1: val = 1;  2: val = 2;  3: val = 4;
+                            4: val = 8;  5: val = 16; 6: val = 32; default: val = 64;
+                        endcase
+                        r = 8'(val); g = r; b = r;
+                    end
+                22: begin // LD_SUBTITLE
+                        if (yy >= LDSBY0 && yy < LDSBY1 &&
+                            ((x >= LDB1X0 && x < LDB1X1) || (x >= LDB2X0 && x < LDB2X1) ||
+                             (x >= LDB3X0 && x < LDB3X1)))
+                            begin r = 8'hFF; g = 8'hFF; b = 8'hFF; end
+                    end
+                23: begin // LD_FLASH
+                        if ((frm >> 5) & 1) begin r = 8'hFF; g = 8'hFF; b = 8'hFF; end
+                    end
                 default: begin end
             endcase
             return {r, g, b};
@@ -127,7 +175,7 @@ module tb_pattern_core #(
             pixcnt = 0;
             forever begin
                 if (de) begin
-                    exprgb = ref_pixel(pat, int'(x0), int'(yv));
+                    exprgb = ref_pixel(pat, int'(x0), int'(yv), int'(frame));
                     if (rgb !== exprgb) begin
                         errors++;
                         if (errors <= 10)
@@ -155,12 +203,12 @@ module tb_pattern_core #(
         rst = 1'b1; pat_en = 1'b0; pattern_sel = 4'd0;
         repeat (4) @(posedge clk);
         rst = 1'b0; pat_en = 1'b1;
-        for (p = 0; p <= 17; p++) begin
+        for (p = 0; p <= 23; p++) begin
             pattern_sel = 5'(p);
             flush_frames(2);
             render_check(p);
         end
-        if (errors == 0) $display("RESULT: PASS  patterns geom=%0dx%0d count=18", H, V);
+        if (errors == 0) $display("RESULT: PASS  patterns geom=%0dx%0d count=24", H, V);
         else             $display("RESULT: FAIL  patterns geom=%0dx%0d errors=%0d", H, V, errors);
         if (errors != 0) $fatal(1, "pattern core test failed");
         $finish;

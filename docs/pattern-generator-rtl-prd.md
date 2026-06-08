@@ -6,7 +6,7 @@
 | **Version** | 0.2.2 (Draft) |
 | **Date** | 2026-06-07 |
 | **Owner** | albert.david@gmail.com |
-| **Status** | Design spec. **Mode A is implemented & hardware-validated** — for current as-built status see [`CLAUDE.md`](../CLAUDE.md) and [`boards/tangnano9k/README.md`](../boards/tangnano9k/README.md). Implementation evolved some details (18 patterns not 14; `PATSEL_W`=5; Tang Nano clean to 1024×768, 720p ELVDS-limited). |
+| **Status** | Design spec. **Mode A is implemented & hardware-validated** — for current as-built status see [`CLAUDE.md`](../CLAUDE.md) and [`boards/tangnano9k/README.md`](../boards/tangnano9k/README.md). Implementation evolved some details (24 patterns incl. local-dimming, not 14; `PATSEL_W`=5; Tang Nano clean to 1024×768, 720p ELVDS-limited). |
 | **License (target)** | MIT (LGPL/unlicensed HDL excluded from the portable tree by policy) |
 | **Changes since v0.1** | Incorporates Codex PRD Reviews v1 & v2 (`docs/codex-prd-review-v1.md`, `docs/codex-prd-review-v2.md`); v0.2.1 de-scopes AUTO fallback to abrupt/low-priority; v0.2.2 adds the AUTO management-clock domain and tightens sideband/register/naming/provenance. See §23 Changelog. |
 

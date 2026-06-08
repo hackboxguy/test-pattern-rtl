@@ -10,7 +10,7 @@ the **Sipeed Tang Nano 9K** (HDMI out via DVI/TMDS); later boards add external
 capture (HDMI/FPDLink/GMSL/eDP/LVDS) for genlock/insertion.
 
 > **Status: Mode A implemented & hardware-confirmed.** Tier 0/1 core (VTG +
-> 18-pattern set + config atomicity) is built and simulation-tested; the Tang
+> 24-pattern set (incl. local-dimming) + config atomicity) is built and simulation-tested; the Tang
 > Nano 9K HDMI path (DVI/TMDS via Gowin OSER10/ELVDS) runs **clean on real
 > hardware at 480p, 800×600, and 1024×768 (XGA)**. 720p is marginal on the board's
 > emulated-LVDS (PHY rate limit, not the RTL); 1080p is not achievable (rPLL caps

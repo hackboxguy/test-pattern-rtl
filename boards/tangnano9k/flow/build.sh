@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Open-source Gowin flow for the Tang Nano 9K: yosys (synth_gowin) ->
-# nextpnr-gowin -> gowin_pack (apicula) -> openFPGALoader.
-# Verified to produce a bitstream with: yosys 0.33, nextpnr-gowin 0.6, apicula.
+# nextpnr-himbaechel -> gowin_pack -> openFPGALoader.
+# Requires OSS CAD Suite (nextpnr-himbaechel + modern yosys). The CLKDIV-based
+# clocking needs himbaechel; the older Debian nextpnr-gowin 0.6 cannot place
+# CLKDIV. Activate OSS CAD Suite first: source <oss-cad-suite>/environment
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
@@ -36,12 +38,13 @@ READ=""
 for f in "${SRC[@]}"; do READ="${READ} read_verilog -sv ${INCDIRS} ${f};"; done
 yosys -p "${READ} synth_gowin -top ${TOP} -json ${OUT}/${TOP}.json"
 
-echo "== place & route (nextpnr-gowin) =="
-nextpnr-gowin \
+echo "== place & route (nextpnr-himbaechel) =="
+nextpnr-himbaechel --timing-allow-fail -r \
   --json "${OUT}/${TOP}.json" \
   --write "${OUT}/${TOP}_pnr.json" \
-  --device "${DEVICE}" --family "${FAMILY}" \
-  --cst boards/tangnano9k/hdmi.cst
+  --device "${DEVICE}" \
+  --vopt family="${FAMILY}" \
+  --vopt cst=boards/tangnano9k/hdmi.cst
 
 echo "== pack (gowin_pack) =="
 gowin_pack -d "${FAMILY}" -o "${OUT}/${TOP}.fs" "${OUT}/${TOP}_pnr.json"

@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: MIT
 // test-pattern-rtl — Tier 4 (Tang Nano 9K) — gowin_tmds_clkgen
 //
-// 27 MHz -> Gowin rPLL: CLKOUT = 5x pixel (serial), CLKOUTD = CLKOUT/5 (pixel).
-// Both clocks come from one rPLL via its CLKOUTD divider (SDIV=5), avoiding a
-// separate CLKDIV cell -- classic nextpnr-gowin 0.6 cannot place CLKDIV here.
-// rPLL params follow the apicula DVI example (examples/DVI/pll480.v). Validated
-// via the open Gowin flow (synth_gowin + nextpnr-gowin + gowin_pack).
+// 27 MHz -> Gowin rPLL (CLKOUT = 5x pixel serial clock) -> CLKDIV(/5) -> pixel
+// clock. This is the known-good apicula DVI clocking (examples/DVI/pll480.v +
+// CLKDIV) and REQUIRES nextpnr-himbaechel: the older Debian nextpnr-gowin 0.6
+// cannot place CLKDIV (apicula's own CLKDIV example fails on it too). Build via
+// OSS CAD Suite (nextpnr-himbaechel + modern yosys). Not Verilator-lintable.
 //
-// rPLL: fCLKOUT = 27MHz*(FBDIV_SEL+1)/(IDIV_SEL+1);  fVCO = fCLKOUT*ODIV_SEL
-//       (VCO ~400..1200 MHz on GW1NR-9C).
+// rPLL: fCLKOUT = 27MHz*(FBDIV_SEL+1)/(IDIV_SEL+1);  fVCO = fCLKOUT*ODIV_SEL.
 //
 //   mode         pixel/serial    IDIV FBDIV ODIV  VCO    status
 //   640x480p60   25.2/126.0 MHz   2    13    4    504   default (apicula PLL480)
@@ -20,12 +19,12 @@ module gowin_tmds_clkgen #(
     parameter ODIV_SEL  = 4
 )(
     input  logic clk27,        // 27 MHz oscillator
-    input  logic resetn,       // active-low
+    input  logic resetn,       // active-low (unused; CLKDIV gated by pll_lock)
     output logic serial_clk,   // 5x pixel clock (OSER10 FCLK)
     output logic pixel_clk,    // pixel clock (OSER10 PCLK, video domain)
     output logic pll_lock
 );
-    wire clkoutp_o, clkoutd3_o;
+    wire clkoutp_o, clkoutd_o, clkoutd3_o;
 
     rPLL #(
         .FCLKIN          ("27"),
@@ -37,19 +36,23 @@ module gowin_tmds_clkgen #(
         .CLKOUT_DLY_STEP (0),       .CLKOUTP_DLY_STEP(0),
         .CLKFB_SEL       ("internal"),
         .CLKOUT_BYPASS   ("false"), .CLKOUTP_BYPASS("false"), .CLKOUTD_BYPASS("false"),
-        .DYN_SDIV_SEL    (5),       .CLKOUTD_SRC("CLKOUT"),   .CLKOUTD3_SRC("CLKOUT"),
-        .DEVICE          ("GW1NR-9C")   // actual Tang Nano 9K part (nextpnr checks this)
+        .DYN_SDIV_SEL    (2),       .CLKOUTD_SRC("CLKOUT"),   .CLKOUTD3_SRC("CLKOUT"),
+        .DEVICE          ("GW1N-9C")
     ) u_pll (
-        .CLKOUT  (serial_clk),   // 5x pixel
-        .CLKOUTD (pixel_clk),    // CLKOUT / SDIV(5) = pixel clock
+        .CLKOUT  (serial_clk),
         .LOCK    (pll_lock),
-        .CLKOUTP (clkoutp_o), .CLKOUTD3(clkoutd3_o),
+        .CLKOUTP (clkoutp_o), .CLKOUTD(clkoutd_o), .CLKOUTD3(clkoutd3_o),
         .RESET   (1'b0), .RESET_P(1'b0),
         .CLKIN   (clk27), .CLKFB(1'b0),
         .FBDSEL  (6'b0), .IDSEL(6'b0), .ODSEL(6'b0),
         .PSDA    (4'b0), .DUTYDA(4'b0), .FDLY(4'b0)
     );
 
-    // resetn currently unused (CLKDIV removed); kept on the port for symmetry.
-    wire _unused = &{1'b0, resetn};
+    CLKDIV #(.DIV_MODE("5")) u_div (
+        .CLKOUT(pixel_clk),
+        .HCLKIN(serial_clk),
+        .RESETN(pll_lock)
+    );
+
+    wire _unused = &{1'b0, resetn, clkoutp_o, clkoutd_o, clkoutd3_o};
 endmodule

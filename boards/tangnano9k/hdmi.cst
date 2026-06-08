@@ -1,21 +1,19 @@
 // test-pattern-rtl — Tang Nano 9K physical constraints (GW1NR-9C).
-// Pin map verified against Sipeed TangNano-9K-example/hdmi/src/hdmi.cst.
-// TLVDS differential pairs use "IO_LOC <p_net> <Ppin>,<Npin>;" — the TLVDS_OBUF
-// OB (the *_n net) is auto-paired, so only the *_p nets are constrained here.
-// (If your nextpnr-himbaechel/apicula version requires the *_n nets constrained
-//  or absent, adjust per the board README.)
+// Pins verified against apicula examples/tangnano9k.cst. For nextpnr-himbaechel,
+// each TLVDS net (*_p and *_n) is constrained to its own pin (NOT the
+// "Ppin,Npin"-on-one-net syntax used by the Gowin-EDA / classic flow).
 
 // HDMI TMDS data pairs
-IO_LOC "tmds_d_p[0]" 71,70;
-IO_PORT "tmds_d_p[0]" PULL_MODE=NONE DRIVE=8;
-IO_LOC "tmds_d_p[1]" 73,72;
-IO_PORT "tmds_d_p[1]" PULL_MODE=NONE DRIVE=8;
-IO_LOC "tmds_d_p[2]" 75,74;
-IO_PORT "tmds_d_p[2]" PULL_MODE=NONE DRIVE=8;
+IO_LOC "tmds_d_p[0]" 71;
+IO_LOC "tmds_d_n[0]" 70;
+IO_LOC "tmds_d_p[1]" 73;
+IO_LOC "tmds_d_n[1]" 72;
+IO_LOC "tmds_d_p[2]" 75;
+IO_LOC "tmds_d_n[2]" 74;
 
 // HDMI TMDS clock pair
-IO_LOC "tmds_clk_p" 69,68;
-IO_PORT "tmds_clk_p" PULL_MODE=NONE DRIVE=8;
+IO_LOC "tmds_clk_p" 69;
+IO_LOC "tmds_clk_n" 68;
 
 // 27 MHz oscillator
 IO_LOC "clk" 52;

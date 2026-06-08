@@ -69,7 +69,8 @@ module top_tangnano9k (
     gowin_tmds_lane u_l2 (.pclk(pixel_clk), .fclk(serial_clk), .rst(rst_pix), .data(q2), .ser(ser[2]));
 
     // ---- differential outputs: 3 data + clock (clock = pixel clock) ----
-    TLVDS_OBUF tmds_buf [3:0] (
+    // Tang Nano 9K HDMI pins are EMULATED LVDS -> ELVDS_OBUF (not TLVDS_OBUF).
+    ELVDS_OBUF tmds_buf [3:0] (
         .I ({pixel_clk,  ser}),
         .O ({tmds_clk_p, tmds_d_p}),
         .OB({tmds_clk_n, tmds_d_n})

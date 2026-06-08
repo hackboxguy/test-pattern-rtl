@@ -33,12 +33,13 @@
     .HSYNC_POL(1'b0), .VSYNC_POL(1'b0)
 `define VIC_1024x768p60  0
 
-// 1280x720p60 CVT-RB — native 16:9 at reduced blanking: ~64 MHz pixel /
-// ~319 MHz serial (below the Tang Nano 9K ELVDS cliff). Non-standard timing;
-// the sink must accept CVT-RB. H+,V- sync.
+// 1280x720p60 reduced-blanking — native 16:9 at 64.8 MHz pixel / 324 MHz serial
+// (1440x750 total @60). Uses the SAME clean PLL config and serial rate as the
+// confirmed-clean XGA mode (low jitter: IDIV=0 -> PFD=27 MHz). Non-standard
+// timing; the sink must accept it. H+,V- sync.
 `define VMODE_1280x720p60_RB \
     .H_ACTIVE(1280), .H_FP(48),  .H_SYNC(32),  .H_BP(80),  \
-    .V_ACTIVE(720),  .V_FP(3),   .V_SYNC(5),   .V_BP(13),  \
+    .V_ACTIVE(720),  .V_FP(3),   .V_SYNC(5),   .V_BP(22),  \
     .HSYNC_POL(1'b1), .VSYNC_POL(1'b0)
 
 // 1280x720p60 — CEA VIC 4. Pixel clock 74.25 MHz. H+,V+ sync.

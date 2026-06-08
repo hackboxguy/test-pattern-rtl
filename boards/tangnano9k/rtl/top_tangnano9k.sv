@@ -32,7 +32,7 @@ module top_tangnano9k (
 `elsif BUILD_720P
     localparam int PLL_IDIV = 3, PLL_FBDIV = 54, PLL_ODIV = 2;   // 371.25 MHz serial
 `elsif BUILD_720P_RB
-    localparam int PLL_IDIV = 4, PLL_FBDIV = 58, PLL_ODIV = 2;   // ~318.6 MHz serial (pixel ~63.7 MHz), 16:9 CVT-RB
+    localparam int PLL_IDIV = 0, PLL_FBDIV = 11, PLL_ODIV = 2;   // 324 MHz serial (pixel 64.8), same low-jitter PLL as XGA, 16:9
 `elsif BUILD_1024X768
     localparam int PLL_IDIV = 0, PLL_FBDIV = 11, PLL_ODIV = 2;   // ~324 MHz serial (pixel ~64.8 MHz)
 `elsif BUILD_800X600

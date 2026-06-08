@@ -19,6 +19,75 @@ capture (HDMI/FPDLink/GMSL/eDP/LVDS) for genlock/insertion.
 
 📄 **Full spec:** [docs/pattern-generator-rtl-prd.md](docs/pattern-generator-rtl-prd.md)
 
+## Getting started: fresh Ubuntu 24.04 → live HDMI patterns
+
+From a blank Ubuntu 24.04 box to test patterns on a screen in ~10 minutes.
+
+**You need:** a Sipeed **Tang Nano 9K**, a USB-C cable (board ↔ PC), an HDMI
+cable, and a monitor.
+
+### 1 · Install the tools
+
+```bash
+# git + simulator + USB flasher (all in Ubuntu 24.04 'universe')
+sudo apt update
+sudo apt install -y git curl verilator openfpgaloader
+
+# FPGA build tools — Yosys + nextpnr-himbaechel + gowin_pack, via OSS CAD Suite.
+# (Not in apt; download the prebuilt tarball into your home dir.)
+cd ~
+URL=$(curl -s https://api.github.com/repos/YosysHQ/oss-cad-suite-build/releases/latest \
+      | grep -o 'https://[^"]*oss-cad-suite-linux-x64-[^"]*\.tgz' | head -1)
+wget -O oss-cad-suite.tgz "$URL" && tar xzf oss-cad-suite.tgz      # creates ~/oss-cad-suite
+```
+
+`build.sh` auto-activates OSS CAD Suite from `~/oss-cad-suite` — no manual
+`source` needed.
+
+### 2 · Allow USB flashing (one-time)
+
+The `openfpgaloader` package installs the needed udev rules. Add yourself to the
+`plugdev` group, then log out/in (or just unplug/replug the board):
+
+```bash
+sudo usermod -aG plugdev "$USER"
+```
+
+(If a flash later reports a USB permission error, just prefix it with `sudo`.)
+
+### 3 · Clone, build, flash
+
+```bash
+git clone https://github.com/hackboxguy/test-pattern-rtl.git
+cd test-pattern-rtl
+
+RES=1024x768 ./boards/tangnano9k/flow/build.sh     # ~1 min; prints a timing/resource report
+openFPGALoader -b tangnano9k boards/tangnano9k/build/top_tangnano9k.fs
+```
+
+### 4 · What you should see
+
+**Color bars** appear within a couple of seconds. Then use the two buttons:
+
+- **S2** — cycle through all **24 patterns** (solids, grays, H/V ramps, checker,
+  grid, R/G/B channel-isolation ramps, and the local-dimming suite: window,
+  moving window, zone checker, near-black wedge, subtitle, flash).
+- **S1** — reset back to color bars.
+
+`RES=1024x768` (XGA) is the highest rock-solid mode; on a 16:9 panel it shows
+pillarboxed. If your monitor is fussy, the most universally-compatible build is
+`RES=480p` (see the resolution table below).
+
+### 5 · (optional) Run the simulations / CI gates
+
+```bash
+make check      # Verilator lint + Yosys smoke + provenance + self-checking sims
+```
+
+> **Troubleshooting** · `openFPGALoader: command not found` → `sudo apt install openfpgaloader`.
+> Build can't find Yosys/nextpnr → confirm OSS CAD Suite extracted to `~/oss-cad-suite`.
+> Monitor says "no signal" → try `RES=480p` (most compatible) or a different cable/port.
+
 ## Reusable tiers (copy only what you need)
 
 | Tier | Path | Responsibility |
@@ -52,24 +121,17 @@ make sim          # self-checking pattern/VTG sims (incl. odd geometries)
 make provenance   # clean-room / SPDX header check
 ```
 
-## Build for the Tang Nano 9K (HDMI out)
+## Resolutions & build reference
 
-Requires the **OSS CAD Suite** (modern Yosys + `nextpnr-himbaechel` + `gowin_pack`);
-`build.sh` auto-activates it from `$OSS_CAD_SUITE`, `~/oss-cad-suite`, or
-`/opt/oss-cad-suite`. Flashing uses `openFPGALoader`.
+(First build? See the **Getting started** section above for tool install.)
+Resolution is selected by `RES=` on the build:
 
 ```bash
-# build (default 480p) and flash
-./boards/tangnano9k/flow/build.sh
-openFPGALoader -b tangnano9k boards/tangnano9k/build/top_tangnano9k.fs
-
-# pick a resolution
 RES=1024x768 ./boards/tangnano9k/flow/build.sh
 ```
 
-Resolution is selected by `RES=`. Power-on shows color bars; **S2** cycles the 24
-patterns, **S1** resets. The clean/marginal boundary is the board's emulated-LVDS
-**serial bit rate**, not the RTL (see [boards/tangnano9k/README.md](boards/tangnano9k/README.md)):
+The clean/marginal boundary is the board's emulated-LVDS **serial bit rate**, not
+the RTL (details in [boards/tangnano9k/README.md](boards/tangnano9k/README.md)):
 
 | `RES=` | Mode | pixel / serial clock | Result on Tang Nano 9K |
 |---|---|---|---|

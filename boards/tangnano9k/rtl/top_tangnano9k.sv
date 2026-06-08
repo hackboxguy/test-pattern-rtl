@@ -24,9 +24,16 @@ module top_tangnano9k (
     output logic       tmds_clk_p,
     output logic       tmds_clk_n
 );
+    // ---- resolution select (default 640x480p60; define BUILD_720P for 720p60) ----
+`ifdef BUILD_720P
+    localparam int PLL_IDIV = 3, PLL_FBDIV = 54, PLL_ODIV = 2;   // 371.25 MHz serial
+`else
+    localparam int PLL_IDIV = 2, PLL_FBDIV = 13, PLL_ODIV = 4;   // 126.0 MHz serial
+`endif
+
     // ---- clocks ----
     logic serial_clk, pixel_clk, pll_lock;
-    gowin_tmds_clkgen u_clk (
+    gowin_tmds_clkgen #(.IDIV_SEL(PLL_IDIV), .FBDIV_SEL(PLL_FBDIV), .ODIV_SEL(PLL_ODIV)) u_clk (
         .clk27(clk), .resetn(resetn),
         .serial_clk(serial_clk), .pixel_clk(pixel_clk), .pll_lock(pll_lock)
     );
@@ -46,7 +53,14 @@ module top_tangnano9k (
     logic        de, hsync, vsync, sof, eol;
     logic [11:0] x0, y;
     logic [23:0] frame, rgb;
-    video_source_core #(`VMODE_640x480p60, .COLOR_W(8)) u_src (
+    video_source_core #(
+`ifdef BUILD_720P
+        `VMODE_1280x720p60,
+`else
+        `VMODE_640x480p60,
+`endif
+        .COLOR_W(8)
+    ) u_src (
         .clk(pixel_clk), .rst(rst_pix),
         .pat_en(1'b1), .pattern_sel(pattern_sel), .param('0),
         .de(de), .hsync(hsync), .vsync(vsync), .sof(sof), .eol(eol),

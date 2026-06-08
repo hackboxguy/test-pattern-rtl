@@ -33,12 +33,14 @@ source <path-to>/oss-cad-suite/environment
 
 ```bash
 source <path-to>/oss-cad-suite/environment      # nextpnr-himbaechel + yosys
-./boards/tangnano9k/flow/build.sh
+./boards/tangnano9k/flow/build.sh                # 640x480p60 (default)
+RES=720p ./boards/tangnano9k/flow/build.sh       # 1280x720p60
 openFPGALoader -b tangnano9k boards/tangnano9k/build/top_tangnano9k.fs
 ```
 
-Expected on screen: color bars at 640×480 (upscaled by the monitor). Press **S2**
-to cycle patterns; **S1** resets.
+Expected on screen: color bars (upscaled by the monitor). Press **S2** to cycle
+patterns; **S1** resets. 480p is confirmed working on hardware; 720p meets timing
+(Fmax ≈ 78 MHz > 74.25 MHz) — the TMDS encoder is pipelined (latency 2) to close.
 
 ## Notes / decisions
 

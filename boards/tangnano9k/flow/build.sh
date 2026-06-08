@@ -15,6 +15,15 @@ DEVICE="GW1NR-LV9QN88PC6/I5"   # nextpnr-gowin part string (Tang Nano 9K)
 FAMILY="GW1N-9C"               # nextpnr --family / gowin_pack -d
 TOP="top_tangnano9k"
 
+# Resolution: RES=480p (default) or RES=720p
+RES="${RES:-480p}"
+case "$RES" in
+  480p) DEFINES="" ;;
+  720p) DEFINES="-DBUILD_720P" ;;
+  *) echo "ERROR: RES must be 480p or 720p (got '$RES')"; exit 1 ;;
+esac
+echo "Resolution: ${RES}"
+
 SRC=(
   rtl/reusable/pattern/patterns/pat_color_bars.sv
   rtl/reusable/pattern/patterns/pat_ramp.sv
@@ -35,7 +44,7 @@ INCDIRS="-I rtl/reusable/pattern -I rtl/reusable/video"
 
 echo "== synth (yosys synth_gowin) =="
 READ=""
-for f in "${SRC[@]}"; do READ="${READ} read_verilog -sv ${INCDIRS} ${f};"; done
+for f in "${SRC[@]}"; do READ="${READ} read_verilog -sv ${DEFINES} ${INCDIRS} ${f};"; done
 yosys -p "${READ} synth_gowin -top ${TOP} -json ${OUT}/${TOP}.json"
 
 echo "== place & route (nextpnr-himbaechel) =="

@@ -5,12 +5,15 @@
 // the emitted bitstream stays bounded (DC balance).
 module tb_dvi_tmds_encoder;
     localparam int BOUND = 16;
+    localparam int LAT   = 1;     // sampling offset = (encoder latency 2) - 1
+                                  // (din is driven before the edge, absorbing one stage)
 
     logic       clk = 1'b0; always #5 clk = ~clk;
     logic       rst, de;
     logic [7:0] din;
     logic [1:0] ctrl;
     logic [9:0] dout;
+    logic [7:0] dseq [0:1023];    // history of driven din for latency compare
 
     dvi_tmds_encoder dut (.clk(clk), .rst(rst), .din(din), .ctrl(ctrl), .de(de), .dout(dout));
 
@@ -49,11 +52,11 @@ module tb_dvi_tmds_encoder;
         repeat (3) @(posedge clk);
         rst = 1'b0;
 
-        // ---- control tokens (blanking) ----
+        // ---- control tokens (blanking); hold each long enough to fill pipeline ----
         de = 1'b0;
         for (c = 0; c < 4; c++) begin
             ctrl = 2'(c);
-            @(posedge clk);
+            repeat (LAT + 1) @(posedge clk);
             if (dout !== ctl_token(2'(c))) begin
                 errors++;
                 $display("FAIL ctrl token %0d got=%b exp=%b", c, dout, ctl_token(2'(c)));
@@ -61,21 +64,26 @@ module tb_dvi_tmds_encoder;
         end
 
         // ---- video: round-trip every value + random, track disparity ----
+        // dout at step i corresponds to the din driven LAT cycles earlier.
         de  = 1'b1;
         acc = 0;
-        for (i = 0; i < 256 + 512; i++) begin
-            din = (i < 256) ? 8'(i) : 8'($random);
+        for (i = 0; i < 256 + 512 + LAT; i++) begin
+            din      = (i < 256) ? 8'(i) : 8'($random);
+            dseq[i]  = din;
             @(posedge clk);
-            dec = tmds_decode(dout);
-            if (dec !== din) begin
-                errors++;
-                if (errors <= 10)
-                    $display("FAIL roundtrip i=%0d din=%02h dec=%02h dout=%b", i, din, dec, dout);
-            end
-            acc += (2 * ones10(dout)) - 10;
-            if (acc > BOUND || acc < -BOUND) begin
-                errors++;
-                $display("FAIL disparity acc=%0d at i=%0d", acc, i);
+            if (i >= LAT) begin
+                dec = tmds_decode(dout);
+                if (dec !== dseq[i-LAT]) begin
+                    errors++;
+                    if (errors <= 10)
+                        $display("FAIL roundtrip i=%0d din=%02h dec=%02h dout=%b",
+                                 i-LAT, dseq[i-LAT], dec, dout);
+                end
+                acc += (2 * ones10(dout)) - 10;
+                if (acc > BOUND || acc < -BOUND) begin
+                    errors++;
+                    $display("FAIL disparity acc=%0d at i=%0d", acc, i);
+                end
             end
         end
 

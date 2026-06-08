@@ -13,6 +13,7 @@
 //
 // DVI channel map: ch0=Blue(+ {vsync,hsync} control), ch1=Green, ch2=Red.
 `include "video_modes.svh"
+`include "pattern_ids.svh"
 
 module top_tangnano9k (
     input  logic       clk,         // 27 MHz oscillator  (pin 52)
@@ -34,9 +35,10 @@ module top_tangnano9k (
     logic rst_pix;
     reset_sync #(.STAGES(3)) u_rst (.clk(pixel_clk), .arst_n(resetn & pll_lock), .srst(rst_pix));
 
-    // ---- pattern select via S2 ----
+    // ---- pattern select via S2 (power-on = color bars) ----
     logic [3:0] pattern_sel;
-    gpio_button_ctrl #(.PATSEL_W(4), .N_PATTERNS(14), .ACTIVE_LOW(1'b1)) u_btn (
+    gpio_button_ctrl #(.PATSEL_W(4), .N_PATTERNS(14), .RESET_SEL(`PAT_COLOR_BARS),
+                       .ACTIVE_LOW(1'b1)) u_btn (
         .clk(pixel_clk), .rst(rst_pix), .btn(key), .pattern_sel(pattern_sel)
     );
 

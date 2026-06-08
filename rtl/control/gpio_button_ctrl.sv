@@ -8,6 +8,7 @@
 module gpio_button_ctrl #(
     parameter int PATSEL_W    = 4,
     parameter int N_PATTERNS  = 14,
+    parameter int RESET_SEL   = 0,     // power-on pattern index
     parameter bit ACTIVE_LOW  = 1'b1,
     parameter int DEBOUNCE_CW = 16     // ~2^CW clk cycles of debounce
 )(
@@ -44,7 +45,7 @@ module gpio_button_ctrl #(
     // Advance pattern on each clean press (rising edge of debounced level).
     wire press = level & ~level_d;
     always_ff @(posedge clk) begin
-        if (rst)        pattern_sel <= '0;
+        if (rst)        pattern_sel <= PATSEL_W'(RESET_SEL);
         else if (press) pattern_sel <= (pattern_sel == PATSEL_W'(N_PATTERNS-1)) ? '0
                                                                                 : (pattern_sel + 1'b1);
     end

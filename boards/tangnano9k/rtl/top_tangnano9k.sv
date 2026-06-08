@@ -31,6 +31,8 @@ module top_tangnano9k (
     localparam int PLL_IDIV = 1, PLL_FBDIV = 54, PLL_ODIV = 2;   // 742.5 MHz serial (VCO 1485 -> out of range!)
 `elsif BUILD_720P
     localparam int PLL_IDIV = 3, PLL_FBDIV = 54, PLL_ODIV = 2;   // 371.25 MHz serial
+`elsif BUILD_720P_RB
+    localparam int PLL_IDIV = 4, PLL_FBDIV = 58, PLL_ODIV = 2;   // ~318.6 MHz serial (pixel ~63.7 MHz), 16:9 CVT-RB
 `elsif BUILD_1024X768
     localparam int PLL_IDIV = 0, PLL_FBDIV = 11, PLL_ODIV = 2;   // ~324 MHz serial (pixel ~64.8 MHz)
 `elsif BUILD_800X600
@@ -66,6 +68,8 @@ module top_tangnano9k (
         `VMODE_1920x1080p60,
 `elsif BUILD_720P
         `VMODE_1280x720p60,
+`elsif BUILD_720P_RB
+        `VMODE_1280x720p60_RB,
 `elsif BUILD_1024X768
         `VMODE_1024x768p60,
 `elsif BUILD_800X600

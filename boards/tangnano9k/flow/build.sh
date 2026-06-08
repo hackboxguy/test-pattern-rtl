@@ -10,7 +10,15 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 cd "$ROOT"
 OUT="boards/tangnano9k/build"
+TOP="top_tangnano9k"
 mkdir -p "$OUT"
+
+# `build.sh report` — re-print the last build's timing/resource report (no rebuild).
+if [ "${1:-}" = "report" ]; then
+  if [ -f "${OUT}/report.txt" ]; then cat "${OUT}/report.txt"; else
+    echo "No build report in ${OUT}. Run a build first, e.g. RES=480p $0"; fi
+  exit 0
+fi
 
 # Ensure the OSS CAD Suite tools (modern yosys, nextpnr-himbaechel, gowin_pack)
 # are on PATH. Auto-activate if not already, so a plain ./build.sh just works.
@@ -32,7 +40,6 @@ done
 
 DEVICE="GW1NR-LV9QN88PC6/I5"   # nextpnr-gowin part string (Tang Nano 9K)
 FAMILY="GW1N-9C"               # nextpnr --family / gowin_pack -d
-TOP="top_tangnano9k"
 
 # Resolution: RES=480p (default), 720p, or 1080p. PIXFREQ = real pixel clock (MHz).
 RES="${RES:-480p}"
@@ -118,5 +125,27 @@ fi
 echo "== pack (gowin_pack) =="
 gowin_pack -d "${FAMILY}" -o "${OUT}/${TOP}.fs" "${OUT}/${TOP}_pnr.json"
 
-echo "Done -> ${OUT}/${TOP}.fs"
+# ---- build report (timing + resource usage) -> printed and saved to report.txt;
+#      re-view any time with `./boards/tangnano9k/flow/build.sh report` (or make report).
+SERIALCLK=$(awk "BEGIN{printf \"%.1f\", ${PIXFREQ}*5}")
+{
+  echo "================= Tang Nano 9K build report (RES=${RES}) ================="
+  echo "  pixel clock : ${PIXFREQ} MHz      TMDS serial (bit) clock : ${SERIALCLK} MHz"
+  echo "  defines     : ${DEFINES:-(none)}      P&R seed : ${NEXTPNR_SEED}"
+  if [ -n "${fmax:-}" ]; then
+    MARGIN=$(awk "BEGIN{printf \"%.0f\", (${fmax}/${PIXFREQ}-1)*100}")
+    echo "  timing      : pixel_clk Fmax ${fmax} MHz  (target ${PIXFREQ} MHz, +${MARGIN}% margin)"
+  fi
+  if grep -qi "Failed to route net 'serial_clk'" "${OUT}/pnr.log"; then
+    echo "  clock route : serial_clk NON-dedicated (marginal — try another NEXTPNR_SEED)"
+  else
+    echo "  clock route : serial_clk OK"
+  fi
+  echo "  resources   :"   # non-zero usage only (drops the long list of unused primitives)
+  grep -E ":[[:space:]]+[1-9][0-9]*/[[:space:]]*[0-9]+[[:space:]]+[0-9]+%" "${OUT}/pnr.log" \
+    | grep -vE "(VCC|GND|GSR):" \
+    | sed -E 's/^Info:[[:space:]]*/      /' | sort -u
+  echo "  bitstream   : ${OUT}/${TOP}.fs"
+  echo "========================================================================="
+} | tee "${OUT}/report.txt"
 echo "Flash: openFPGALoader -b tangnano9k ${OUT}/${TOP}.fs"

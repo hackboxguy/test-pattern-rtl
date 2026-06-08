@@ -1,12 +1,15 @@
-# sim/ — verification (harness lands in M1)
+# sim/ — verification (implemented)
 
-Planned (PRD §13):
-- **cocotb** (preferred) or SystemVerilog testbenches on Verilator/Icarus.
-- **Procedural frame dump:** render each pattern to PPM/PNG; golden-compare in
-  CI — including at least one **odd geometry** (e.g. 13×7, 101×53).
-- **Formal:** VTG line/frame counters, sync widths, `sof`/`eol`, no mid-frame
-  config application.
-- **Config atomicity, boundary/clamp, AXIS stall, and (conditional) AUTO
-  fallback** tests.
+Self-checking Verilator (`--binary`) testbenches, run via `make sim`
+(`flow/sim/run_sim.sh`). All currently pass:
 
-Layout (to be created in M1): `sim/tests/`, `sim/golden/`, `sim/harness/`.
+| Testbench | Checks |
+|---|---|
+| `tb_video_timing_gen` | VTG active/eol/sync counts, first-pixel coord, frame increment (32×24, 13×7, 101×53). |
+| `tb_pattern_core` | Every v1 pattern rendered to PPM (`sim/out/`) + checked vs an independent reference; blanking-black; pixel count (normal + odd geometry). |
+| `tb_cfg_atomic` | Cross-domain config: active changes only on `sof`, no tearing, `applied_frame` advances. |
+| `tb_dvi_tmds_encoder` | DVI TMDS encode→decode round-trip (all 256 bytes + random), control tokens, bounded running disparity. |
+| `tb_gpio_button_ctrl` | Debounce + pattern cycle/wrap. |
+
+**Roadmap** (not yet implemented): formal checks (SymbiYosys), Mode B/AUTO
+fallback tests, AXIS stall tests, committed golden images.

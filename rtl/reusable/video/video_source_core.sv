@@ -32,7 +32,8 @@ module video_source_core #(
     parameter int CHECKER_LOG2    = 4,
     parameter int GRID_PITCH_LOG2 = 5,
     parameter int GRID_LINE_W     = 1,
-    parameter int RAMP_FRAC       = 12
+    parameter int RAMP_FRAC       = 12,
+    parameter bit COMMIT_ON_SOF   = 1'b1   // latch control on sof (FR-CORE-5)
 )(
     input  logic                    clk,
     input  logic                    rst,
@@ -70,6 +71,26 @@ module video_source_core #(
         .x0(x0_v), .y(y_v), .frame(frame_v)
     );
 
+    // --- frame-boundary commit of control inputs (FR-CORE-5) ---
+    // Latch pat_en/pattern_sel/param on sof so a button press (or any async
+    // control change) applies at the frame boundary, not mid-frame.
+    logic                      pat_en_c;
+    logic [PATSEL_W-1:0]       pattern_sel_c;
+    logic [NPARAM*PARAM_W-1:0] param_c;
+    if (COMMIT_ON_SOF) begin : g_commit
+        always_ff @(posedge clk) begin
+            if (rst) begin
+                pat_en_c <= 1'b0; pattern_sel_c <= '0; param_c <= '0;
+            end else if (sof_v) begin
+                pat_en_c <= pat_en; pattern_sel_c <= pattern_sel; param_c <= param;
+            end
+        end
+    end else begin : g_passthru
+        assign pat_en_c      = pat_en;
+        assign pattern_sel_c = pattern_sel;
+        assign param_c       = param;
+    end
+
     // --- pattern core (latency PAT_LAT) ---
     pattern_pixel_core #(
         .COLOR_W(COLOR_W), .PIXELS_PER_CLOCK(1),
@@ -83,7 +104,7 @@ module video_source_core #(
         .de(de_v), .de_mask(de_v),
         .x0(x0_v), .y(y_v), .frame(frame_v), .sof(sof_v), .eol(eol_v),
         .h_active(HCOORD_W'(H_ACTIVE)), .v_active(VCOORD_W'(V_ACTIVE)),
-        .pat_en(pat_en), .pattern_sel(pattern_sel), .param(param),
+        .pat_en(pat_en_c), .pattern_sel(pattern_sel_c), .param(param_c),
         .rgb(rgb), .de_mask_out(core_de_mask)
     );
     logic core_de_mask;  // ppc=1: redundant with the delayed de below

@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 // test-pattern-rtl — Tier 4 (Tang Nano 9K) — top_tangnano9k
 //
-// Board top: 27 MHz -> Gowin rPLL/CLKDIV -> video_source_core (640x480p60 test
-// patterns) -> 3x DVI TMDS encoders -> Gowin OSER10 serializers -> TLVDS HDMI.
+// Board top: 27 MHz -> Gowin rPLL/CLKDIV -> video_source_core (test patterns)
+// -> 3x DVI TMDS encoders -> Gowin OSER10 serializers -> ELVDS HDMI.
+// Resolution is build-selected: default 640x480p60, -DBUILD_720P, -DBUILD_1080P
+// (1080p not buildable on this board -- see README).
 // The TMDS clock channel carries the pixel clock directly (apicula DVI topology).
 // Button S2 cycles patterns; S1 resets.
 //

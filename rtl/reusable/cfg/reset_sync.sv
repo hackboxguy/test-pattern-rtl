@@ -10,6 +10,10 @@ module reset_sync #(
     input  logic arst_n,   // async, active-low reset input
     output logic srst      // synchronous, active-high reset output
 );
+    if (STAGES < 2) begin : g_stages_guard
+        $error("reset_sync: STAGES must be >= 2");
+    end
+
     logic [STAGES-1:0] sync_q;
 
     always_ff @(posedge clk or negedge arst_n) begin

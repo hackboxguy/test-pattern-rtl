@@ -9,9 +9,12 @@ TMDS/DVI serializers, capture PHYs) lives in thin board wrappers. First target i
 the **Sipeed Tang Nano 9K** (HDMI out via DVI/TMDS); later boards add external
 capture (HDMI/FPDLink/GMSL/eDP/LVDS) for genlock/insertion.
 
-> **Status: M0 (scaffold).** Directory/tier layout, interface stubs, a Tier 0
-> solid-color seed, and CI (Verilator lint + provenance) are in place. The real
-> pattern set and timing generator land in M1. See the milestones in the PRD.
+> **Status: Mode A implemented & hardware-confirmed.** Tier 0/1 core (VTG +
+> 14-pattern v1 set + config atomicity) is built and simulation-tested; the
+> Tang Nano 9K HDMI path runs **640x480p60 and 1280x720p60 on real hardware**
+> (DVI/TMDS via Gowin OSER10/ELVDS). 1080p60 is not achievable on this board
+> (rPLL caps at 600 MHz). Mode B / AUTO / AXIS modules are interface stubs
+> (later milestones). See the PRD milestones.
 
 📄 **Full spec:** [docs/pattern-generator-rtl-prd.md](docs/pattern-generator-rtl-prd.md)
 

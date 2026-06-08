@@ -23,6 +23,8 @@ rtl/reusable/video/insertion_mux.sv
 rtl/reusable/stream/axis_video_wrap.sv
 rtl/reusable/cfg/cfg_cdc.sv
 rtl/reusable/cfg/cfg_regs.sv
+rtl/reusable/cfg/cfg_commit.sv
+rtl/reusable/cfg/cfg_pipe.sv
 rtl/reusable/cfg/reset_sync.sv
 
 # Control adapters (not part of the Tier 0 portability surface)

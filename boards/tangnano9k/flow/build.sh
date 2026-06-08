@@ -74,11 +74,12 @@ READ=""
 for f in "${SRC[@]}"; do READ="${READ} read_verilog -sv ${DEFINES} ${INCDIRS} ${f};"; done
 yosys -p "${READ} synth_gowin -top ${TOP} -json ${OUT}/${TOP}.json"
 
-# Placement seed: NEXTPNR_SEED=<n> for a reproducible build (recommended for
-# hardware debug); otherwise a random seed (-r). The seed strongly affects the
-# 720p clock/output routing quality (Codex v2).
-SEED_ARG="-r"
-[ -n "${NEXTPNR_SEED:-}" ] && SEED_ARG="--seed ${NEXTPNR_SEED}"
+# Placement seed: FIXED by default for reproducible placement. A random seed (-r)
+# made clock/output routing a lottery near the ELVDS cliff -- some placements give
+# a marginal clock that the monitor is slow to lock onto. Override with
+# NEXTPNR_SEED=<n> to sweep; NEXTPNR_SEED=r for a random seed.
+NEXTPNR_SEED="${NEXTPNR_SEED:-2}"
+if [ "${NEXTPNR_SEED}" = "r" ]; then SEED_ARG="-r"; else SEED_ARG="--seed ${NEXTPNR_SEED}"; fi
 
 echo "== place & route (nextpnr-himbaechel, timing-driven at ${PIXFREQ} MHz, ${SEED_ARG}) =="
 # --freq sets the target for the (otherwise-unconstrained) pixel-clock domain so
@@ -98,9 +99,9 @@ nextpnr-himbaechel --timing-allow-fail ${SEED_ARG} --freq "${PIXFREQ}" \
 # the OSER10 FCLK and CLKDIV. A non-dedicated route here is a strong predictor of
 # marginal/garbled 720p output -- fail the build so we don't flash it.
 if grep -q "Failed to route net 'serial_clk'" "${OUT}/pnr.log"; then
-  echo "TIMING/CLOCK FAIL: serial_clk did not use dedicated routing (marginal clocking)."
-  echo "                   Re-run with a different NEXTPNR_SEED."
-  [ "${RES}" = "720p" ] && exit 1
+  echo "TIMING/CLOCK FAIL: serial_clk did not get dedicated routing (marginal clock ->"
+  echo "                   slow/unreliable monitor lock). Re-run with NEXTPNR_SEED=<n>."
+  case "$RES" in 800x600|1024x768|720rb|720p|1080p) exit 1 ;; esac
 fi
 
 # Post-build timing gate: worst reported pixel_clk Fmax must clear the pixel clock.

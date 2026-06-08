@@ -3,13 +3,32 @@
 # nextpnr-himbaechel -> gowin_pack -> openFPGALoader.
 # Requires OSS CAD Suite (nextpnr-himbaechel + modern yosys). The CLKDIV-based
 # clocking needs himbaechel; the older Debian nextpnr-gowin 0.6 cannot place
-# CLKDIV. Activate OSS CAD Suite first: source <oss-cad-suite>/environment
+# CLKDIV. This script auto-activates OSS CAD Suite from $OSS_CAD_SUITE,
+# ~/oss-cad-suite, or /opt/oss-cad-suite if it is not already on PATH.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 cd "$ROOT"
 OUT="boards/tangnano9k/build"
 mkdir -p "$OUT"
+
+# Ensure the OSS CAD Suite tools (modern yosys, nextpnr-himbaechel, gowin_pack)
+# are on PATH. Auto-activate if not already, so a plain ./build.sh just works.
+if ! command -v nextpnr-himbaechel >/dev/null 2>&1; then
+  for env in "${OSS_CAD_SUITE:+$OSS_CAD_SUITE/environment}" \
+             "$HOME/oss-cad-suite/environment" "/opt/oss-cad-suite/environment"; do
+    if [ -n "$env" ] && [ -f "$env" ]; then
+      # shellcheck source=/dev/null
+      source "$env"; break
+    fi
+  done
+fi
+for tool in yosys nextpnr-himbaechel gowin_pack; do
+  command -v "$tool" >/dev/null 2>&1 || {
+    echo "ERROR: '$tool' not found. Install OSS CAD Suite, then either set"
+    echo "       OSS_CAD_SUITE=<dir> or 'source <dir>/oss-cad-suite/environment'." >&2
+    exit 1; }
+done
 
 DEVICE="GW1NR-LV9QN88PC6/I5"   # nextpnr-gowin part string (Tang Nano 9K)
 FAMILY="GW1N-9C"               # nextpnr --family / gowin_pack -d

@@ -25,7 +25,7 @@ module video_source_core #(
     parameter int HCOORD_W  = 12,
     parameter int VCOORD_W  = 12,
     parameter int FRAME_W   = 24,
-    parameter int PATSEL_W  = 4,
+    parameter int PATSEL_W  = 5,
     parameter int NPARAM    = 4,
     parameter int PARAM_W   = 32,
     // --- pattern tuning ---

@@ -26,7 +26,7 @@ module tb_pattern_core #(
     always #5 clk = ~clk;
 
     logic         rst, pat_en;
-    logic [3:0]   pattern_sel;
+    logic [4:0]   pattern_sel;     // 5 bits: 18 patterns (0..17)
     logic [127:0] param;
     logic         de, hsync, vsync, sof, eol;
     logic [11:0]  x0, yv;
@@ -39,7 +39,7 @@ module tb_pattern_core #(
         .V_ACTIVE(V), .V_FP(1), .V_SYNC(1), .V_BP(1),
         .HSYNC_POL(1'b1), .VSYNC_POL(1'b1),
         .COLOR_W(COLOR_W), .HCOORD_W(12), .VCOORD_W(12), .FRAME_W(24),
-        .PATSEL_W(4), .NPARAM(4), .PARAM_W(32),
+        .PATSEL_W(5), .NPARAM(4), .PARAM_W(32),
         .CHECKER_LOG2(CHK), .GRID_PITCH_LOG2(GP), .GRID_LINE_W(LW), .RAMP_FRAC(FRAC)
     ) dut (
         .clk(clk), .rst(rst), .pat_en(pat_en),
@@ -92,6 +92,9 @@ module tb_pattern_core #(
                         r = 8'(((val >> (8 - STAIR_BITS)) * STAIR_MUL));
                         g = r; b = r;
                     end
+                15: begin val = (x * INV_H) >> FRAC; if (val > 255) val = 255; r = 8'(val); end // red-only
+                16: begin val = (x * INV_H) >> FRAC; if (val > 255) val = 255; g = 8'(val); end // green-only
+                17: begin val = (x * INV_H) >> FRAC; if (val > 255) val = 255; b = 8'(val); end // blue-only
                 default: begin end
             endcase
             return {r, g, b};
@@ -152,12 +155,12 @@ module tb_pattern_core #(
         rst = 1'b1; pat_en = 1'b0; pattern_sel = 4'd0;
         repeat (4) @(posedge clk);
         rst = 1'b0; pat_en = 1'b1;
-        for (p = 0; p <= 14; p++) begin
-            pattern_sel = 4'(p);
+        for (p = 0; p <= 17; p++) begin
+            pattern_sel = 5'(p);
             flush_frames(2);
             render_check(p);
         end
-        if (errors == 0) $display("RESULT: PASS  patterns geom=%0dx%0d count=15", H, V);
+        if (errors == 0) $display("RESULT: PASS  patterns geom=%0dx%0d count=18", H, V);
         else             $display("RESULT: FAIL  patterns geom=%0dx%0d errors=%0d", H, V, errors);
         if (errors != 0) $fatal(1, "pattern core test failed");
         $finish;

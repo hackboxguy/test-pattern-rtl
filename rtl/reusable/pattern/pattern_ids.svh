@@ -23,7 +23,10 @@
 `define PAT_CHECKER_1PX 12
 `define PAT_GRID        13
 `define PAT_STAIRCASE   14   // horizontal grayscale staircase (discrete steps)
+`define PAT_RAMP_R      15   // red-only horizontal ramp   (TMDS channel isolation)
+`define PAT_RAMP_G      16   // green-only horizontal ramp (TMDS channel isolation)
+`define PAT_RAMP_B      17   // blue-only horizontal ramp  (TMDS channel isolation)
 
-`define PAT_COUNT       15
+`define PAT_COUNT       18
 
 `endif // PATTERN_IDS_SVH

@@ -22,7 +22,7 @@ module pattern_pixel_core #(
     parameter int HCOORD_W         = 12,
     parameter int VCOORD_W         = 12,
     parameter int FRAME_W          = 24,
-    parameter int PATSEL_W         = 4,
+    parameter int PATSEL_W         = 5,    // 5 bits addresses the 18-pattern set
     parameter int NPARAM           = 4,
     parameter int PARAM_W          = 32,
     // pattern geometry / tuning (Mode A, compile-time)
@@ -91,8 +91,10 @@ module pattern_pixel_core #(
 
     // ---- grayscale staircase: quantize the horizontal ramp value to 2^STAIR_BITS
     //      steps (top STAIR_BITS bits replicated). Reuses the ramp_h datapath. ----
+    logic [COLOR_W-1:0]   ramp_val;   // horizontal ramp value (B channel of ramp_h)
     logic [COLOR_W-1:0]   stair_val;
     logic [3*COLOR_W-1:0] stair_rgb;
+    assign ramp_val  = ramph_rgb[COLOR_W-1:0];
     assign stair_val = {(COLOR_W/STAIR_BITS){ramph_rgb[COLOR_W-1 -: STAIR_BITS]}};
     assign stair_rgb = {stair_val, stair_val, stair_val};
 
@@ -114,6 +116,9 @@ module pattern_pixel_core #(
             PATSEL_W'(`PAT_CHECKER_1PX): pix = checker1_rgb;
             PATSEL_W'(`PAT_GRID):        pix = grid_rgb;
             PATSEL_W'(`PAT_STAIRCASE):   pix = stair_rgb;
+            PATSEL_W'(`PAT_RAMP_R):      pix = {ramp_val, CH_LO,    CH_LO};    // red-only
+            PATSEL_W'(`PAT_RAMP_G):      pix = {CH_LO,    ramp_val, CH_LO};    // green-only
+            PATSEL_W'(`PAT_RAMP_B):      pix = {CH_LO,    CH_LO,    ramp_val}; // blue-only
             default:                     pix = {CH_LO, CH_LO, CH_LO}; // PAT_BLACK + disabled IDs
         endcase
         // Blanking pixels are black (FR-SB-3); disabled core is black.

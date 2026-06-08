@@ -47,8 +47,8 @@ module top_tangnano9k (
     reset_sync #(.STAGES(3)) u_rst (.clk(pixel_clk), .arst_n(resetn & pll_lock), .srst(rst_pix));
 
     // ---- pattern select via S2 (power-on = color bars) ----
-    logic [3:0] pattern_sel;
-    gpio_button_ctrl #(.PATSEL_W(4), .N_PATTERNS(`PAT_COUNT), .RESET_SEL(`PAT_COLOR_BARS),
+    logic [4:0] pattern_sel;   // 5 bits: PAT_COUNT (18) patterns
+    gpio_button_ctrl #(.PATSEL_W(5), .N_PATTERNS(`PAT_COUNT), .RESET_SEL(`PAT_COLOR_BARS),
                        .ACTIVE_LOW(1'b1)) u_btn (
         .clk(pixel_clk), .rst(rst_pix), .btn(key), .pattern_sel(pattern_sel)
     );
@@ -65,7 +65,7 @@ module top_tangnano9k (
 `else
         `VMODE_640x480p60,
 `endif
-        .COLOR_W(8)
+        .COLOR_W(8), .PATSEL_W(5)
     ) u_src (
         .clk(pixel_clk), .rst(rst_pix),
         .pat_en(1'b1), .pattern_sel(pattern_sel), .param('0),

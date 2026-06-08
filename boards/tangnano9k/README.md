@@ -84,8 +84,13 @@ fabric: ~200 MHz is clean, ~371 MHz is not.
 | 640x480p60      | 25.2 / 126.0 MHz   | 2 / 13 / 4 | ✅ clean (4:3, safe baseline) |
 | 800x600p60      | ~40 / ~200 MHz     | 4 / 36 / 4 | ✅ clean (4:3) |
 | 1024x768p60     | ~65 / ~325 MHz     | 0 / 11 / 2 | ✅ **clean — highest confirmed (4:3 XGA)** |
-| 1280x720p60 RB  | ~64 / ~319 MHz     | 4 / 58 / 2 | ⚠️ native 16:9 at reduced blanking (below the cliff); needs a CVT-RB-tolerant sink (`RES=720rb`) |
+| 1280x720p60 RB  | ~64.8 / 324 MHz    | 0 / 11 / 2 | ❌ 16:9, same rate/PLL as XGA but still artifacts: 1280-wide forces short blanking (~11% vs XGA's 24%), too little receiver recovery time at 324 MHz; placement-sensitive (`RES=720rb`) |
 | 1280x720p60     | 74.25 / 371.25 MHz | 3 / 54 / 2 | ❌ above the ELVDS cliff (gradient/transition artifacts) |
+
+**No 16:9 mode is reliably clean on this board.** 4:3 up to 1024x768 is the clean
+ceiling. Getting 1280-wide active at a sub-cliff serial rate forces reduced
+blanking, which starves the ELVDS receiver's per-line recovery -- so the 16:9
+modes stay marginal regardless of PLL/seed.
 | 1920x1080p60| 148.5 / 742.5 MHz  | 1 / 54 / 2 | ❌ **NOT BUILDABLE** on this board |
 
 **1080p60 is not achievable on the Tang Nano 9K (GW1NR-9C)** — a hard limit, not a

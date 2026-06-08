@@ -19,6 +19,13 @@
     .HSYNC_POL(1'b0), .VSYNC_POL(1'b0)
 `define VIC_640x480p60   1
 
+// 800x600p60 — VESA DMT. Pixel ~40 MHz (serial ~200 MHz). H+,V+ sync.
+`define VMODE_800x600p60 \
+    .H_ACTIVE(800),  .H_FP(40),  .H_SYNC(128), .H_BP(88),  \
+    .V_ACTIVE(600),  .V_FP(1),   .V_SYNC(4),   .V_BP(23),  \
+    .HSYNC_POL(1'b1), .VSYNC_POL(1'b1)
+`define VIC_800x600p60   0
+
 // 1280x720p60 — CEA VIC 4. Pixel clock 74.25 MHz. H+,V+ sync.
 `define VMODE_1280x720p60 \
     .H_ACTIVE(1280), .H_FP(110), .H_SYNC(40),  .H_BP(220), \

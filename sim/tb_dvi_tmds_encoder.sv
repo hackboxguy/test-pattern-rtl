@@ -5,7 +5,7 @@
 // the emitted bitstream stays bounded (DC balance).
 module tb_dvi_tmds_encoder;
     localparam int BOUND = 16;
-    localparam int LAT   = 1;     // sampling offset = (encoder latency 2) - 1
+    localparam int LAT   = 2;     // sampling offset = (encoder latency 3) - 1
                                   // (din is driven before the edge, absorbing one stage)
 
     logic       clk = 1'b0; always #5 clk = ~clk;

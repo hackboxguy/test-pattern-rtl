@@ -48,6 +48,8 @@ module tb_pattern_core #(
     localparam int HB_T = V / 8;
     localparam int HB_M = (V - HB_H) / 2;
     localparam int HB_B = V - HB_H - V / 8;
+    localparam int LD1COLW = (H / ZN < 1) ? 1 : H / ZN;     // smooth-sweep column width
+    localparam int LD1STRX = (H - LD1COLW < 1) ? 1 : H - LD1COLW;
 
     logic clk = 1'b0;
     always #5 clk = ~clk;
@@ -157,13 +159,15 @@ module tb_pattern_core #(
                 23: begin // LD_FLASH
                         if ((frm >> 5) & 1) begin r = 8'hFF; g = 8'hFF; b = 8'hFF; end
                     end
-                24, 25, 26, 27, 30, 31: begin // 1D zone-index patterns
+                25: begin // LD1D_SWEEP (smooth: one-zone column glides L->R)
+                        sel = ((frm & 255) * LD1STRX) >> 8;   // scol
+                        if (x >= sel && x < sel + LD1COLW) begin r=8'hFF; g=8'hFF; b=8'hFF; end
+                    end
+                24, 26, 27, 30, 31: begin // 1D zone-index patterns
                         nx = (x * INV_H) >> FRAC; if (nx > 255) nx = 255;
                         zidx = (nx * ZN) >> COLOR_W; if (zidx > ZN - 1) zidx = ZN - 1;
-                        sel  = ((frm & 255) * ZN) >> 8;
                         case (pat)
                             24: if (zidx == ZC) begin r=8'hFF; g=8'hFF; b=8'hFF; end          // COLUMN
-                            25: if (zidx == sel) begin r=8'hFF; g=8'hFF; b=8'hFF; end          // SWEEP
                             26: if (zidx == ZC &&                                              // YWIN
                                     ((yy>=YW_T && yy<YW_T+YW_H) || (yy>=YW_M && yy<YW_M+YW_H) ||
                                      (yy>=YW_B && yy<YW_B+YW_H)))

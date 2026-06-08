@@ -47,12 +47,16 @@ module pat_localdim_1d #(
     localparam int ZQ1 = ZONES / 4;        // quarter / three-quarter zones (dual)
     localparam int ZQ3 = (3 * ZONES) / 4;
 
-    // ---- moving sweep: one zone selected per frame-phase, wraps at ZONES-1 ----
-    // sel = floor(frame[7:0] * ZONES / 256) steps 0..ZONES-1 over 256 frames.
-    logic [8+ZW-1:0] sel_prod;
-    logic [ZW-1:0]   sel;
-    assign sel_prod = frame[7:0] * (8+ZW)'(ZONES);
-    assign sel      = sel_prod[8+ZW-1:8];
+    // ---- smooth sweep: a one-zone-wide column glides L->R by pixels and wraps
+    //      (scol = floor(frame[7:0]*STRX/256) — ~one zone-width every few frames). ----
+    localparam int COLW = (H_ACTIVE / ZONES < 1) ? 1 : H_ACTIVE / ZONES;  // one zone wide
+    localparam int STRX = (H_ACTIVE - COLW < 1) ? 1 : H_ACTIVE - COLW;    // travel span
+    logic [8+HCOORD_W-1:0] sprod;
+    logic [HCOORD_W-1:0]   scol;
+    logic                  sweep_on;
+    assign sprod    = frame[7:0] * (8+HCOORD_W)'(STRX);
+    assign scol     = sprod[8+HCOORD_W-1:8];
+    assign sweep_on = (x >= scol) && (x < scol + HCOORD_W'(COLW));
 
     // ---- vertical windows / bands (compile-time y ranges) ----
     localparam int YW_H = V_ACTIVE / 8;                 // YWIN window height
@@ -89,7 +93,7 @@ module pat_localdim_1d #(
     always_comb begin
         case (sub)
             3'd0:    rgb = (zone_idx == ZW'(ZC))                        ? WHITE : BLACK; // COLUMN
-            3'd1:    rgb = (zone_idx == sel)                            ? WHITE : BLACK; // SWEEP
+            3'd1:    rgb = sweep_on                                     ? WHITE : BLACK; // SWEEP (smooth)
             3'd2:    rgb = ((zone_idx == ZW'(ZC)) && in_ywin_y)         ? WHITE : BLACK; // YWIN
             3'd3:    rgb = zone_idx[0]                                  ? BLACK : WHITE; // ALTZONES (even white)
             3'd4:    rgb = in_hband                                     ? WHITE : BLACK; // HBAND
@@ -101,5 +105,5 @@ module pat_localdim_1d #(
 
     // unused for lint: high frame bits, and the fractional (low) product bits.
     logic _unused;
-    assign _unused = &{1'b0, frame[FRAME_W-1:8], zi_prod[COLOR_W-1:0], sel_prod[7:0]};
+    assign _unused = &{1'b0, frame[FRAME_W-1:8], zi_prod[COLOR_W-1:0], sprod[7:0]};
 endmodule

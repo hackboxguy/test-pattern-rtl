@@ -33,6 +33,7 @@ module video_source_core #(
     parameter int GRID_PITCH_LOG2 = 5,
     parameter int GRID_LINE_W     = 1,
     parameter int RAMP_FRAC       = 12,
+    parameter int LD1D_ZONES      = 48,    // 1D local-dimming LED/zone count
     parameter bit COMMIT_ON_SOF   = 1'b1   // latch control on sof (FR-CORE-5)
 )(
     input  logic                    clk,
@@ -98,7 +99,7 @@ module video_source_core #(
         .PATSEL_W(PATSEL_W), .NPARAM(NPARAM), .PARAM_W(PARAM_W),
         .H_ACTIVE(H_ACTIVE), .V_ACTIVE(V_ACTIVE),
         .CHECKER_LOG2(CHECKER_LOG2), .GRID_PITCH_LOG2(GRID_PITCH_LOG2),
-        .GRID_LINE_W(GRID_LINE_W), .RAMP_FRAC(RAMP_FRAC)
+        .GRID_LINE_W(GRID_LINE_W), .RAMP_FRAC(RAMP_FRAC), .LD1D_ZONES(LD1D_ZONES)
     ) u_core (
         .clk(clk), .rst(rst),
         .de(de_v), .de_mask(de_v),

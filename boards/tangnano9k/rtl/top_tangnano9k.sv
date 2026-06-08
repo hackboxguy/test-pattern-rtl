@@ -17,6 +17,11 @@
 `include "video_modes.svh"
 `include "pattern_ids.svh"
 
+// 1D local-dimming LED/zone count (build with ZONES=<n>; default 48).
+`ifndef LD1D_ZONES
+`define LD1D_ZONES 48
+`endif
+
 module top_tangnano9k (
     input  logic       clk,         // 27 MHz oscillator  (pin 52)
     input  logic       resetn,      // button S1, active-low (pin 4)
@@ -77,7 +82,7 @@ module top_tangnano9k (
 `else
         `VMODE_640x480p60,
 `endif
-        .COLOR_W(8), .PATSEL_W(5)
+        .COLOR_W(8), .PATSEL_W(5), .LD1D_ZONES(`LD1D_ZONES)
     ) u_src (
         .clk(pixel_clk), .rst(rst_pix),
         .pat_en(1'b1), .pattern_sel(pattern_sel), .param('0),

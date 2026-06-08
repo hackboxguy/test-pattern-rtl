@@ -41,7 +41,7 @@ docs/                   PRD (design spec) + coding-standards + codex reviews (NO
 
 | Resolution | serial rate | result |
 |---|---|---|
-| 640×480p60 / 800×600p60 / 1024×768p60 | ≤325 MHz | ✅ clean (all 24 patterns) |
+| 640×480p60 / 800×600p60 / 1024×768p60 | ≤325 MHz | ✅ clean (all 32 patterns) |
 | 1280×720p60 (any variant incl. reduced-blanking) | 324–371 MHz | ❌ marginal — colored lines at value transitions |
 | 1920×1080p60 | 742.5 MHz | ❌ not buildable (rPLL CLKOUT caps at 600 MHz) |
 
@@ -66,7 +66,7 @@ per-line recovery at high rate. The same core runs higher on a true-LVDS board.
   prefix-XOR. Needed to close 720p fabric timing.
 - **SystemVerilog must pass `yosys read_verilog` too** (CI gate). yosys 0.33
   rejects `function automatic logic [N]` — encoder functions are Verilog-2001 style.
-- **`PATSEL_W=5`** (24 patterns; was 4 → caused CASEOVERLAP/aliasing).
+- **`PATSEL_W=5`** (32 patterns; was 4 → caused CASEOVERLAP/aliasing).
 - **build.sh:** passes `--freq <pixel MHz>` (real timing target, not 12 MHz default)
   + post-build Fmax gate. Resolution is a compile-time macro (`-DBUILD_720P` etc.)
   + matching rPLL dividers in top.
@@ -79,18 +79,23 @@ per-line recovery at high rate. The same core runs higher on a true-LVDS board.
   `=r` for random. (Symptom if you see it: minute-long black screen before lock.)
 - **1080p is physically impossible here** (742.5 MHz > rPLL 600 MHz max).
 
-## Pattern IDs (pattern_ids.svh, PAT_COUNT=24)
+## Pattern IDs (pattern_ids.svh, PAT_COUNT=32 — fills PATSEL_W=5 exactly)
 
 `0` black · `1` white · `2` red · `3` green · `4` blue · `5–7` gray25/50/75 ·
 `8` color_bars · `9` ramp_h · `10` ramp_v · `11` checker · `12` checker_1px ·
-`13` grid (with frame border) · `14` staircase · `15–17` ramp_r/g/b (TMDS
-channel-isolation) · **`18–23` local-dimming family** (`pat_localdim`, sub 0–5):
-`18` window · `19` moving window · `20` coarse zone checker · `21` near-black
-wedge · `22` subtitle · `23` flash. Power-on = color_bars; **S2** cycles, **S1** resets.
+`13` grid · `14` staircase · `15–17` ramp_r/g/b (TMDS channel-isolation) ·
+**`18–23` 2D local-dimming** (`pat_localdim`): window · moving window · zone
+checker · near-black wedge · subtitle · flash · **`24–31` 1D edge-bar
+local-dimming** (`pat_localdim_1d`): zone column · sweep · y-window · alt-zones ·
+h-band · subtitle · flash · dual-highlight. Power-on = color_bars; **S2** cycles,
+**S1** resets.
 
-The local-dimming family (`pat_localdim.sv`) is a sub-selected rectangle/zone
-primitive reusing the ramp's normalized coords + the frame counter — **zero extra
-multipliers**, multiply-free motion. `frame` is now live (moving window + flash).
+Both local-dimming families are sub-selected primitives reusing the ramp's
+normalized coords + the frame counter — **zero extra multipliers**. The 1D family
+(for bottom-edge LED-bar panels = vertical column zones) is parameterized by
+**`LD1D_ZONES`** (LED count; `ZONES=<n>` build option, default 48); the per-pixel
+zone index = `floor(norm_x*ZONES/2^COLOR_W)`. Target panels (`video_modes.svh`,
+not Tang-Nano-buildable — need a faster board): `1920x720`/40-LED, `2560x1440`/47-LED.
 
 ## What's next (roadmap)
 
@@ -108,7 +113,7 @@ multipliers**, multiply-free motion. `frame` is now live (moving window + flash)
   photos) — they're kept untracked by convention. Build artifacts under
   `boards/*/build/` are gitignored.
 - The **PRD (`docs/pattern-generator-rtl-prd.md`) is the design spec** and predates
-  some as-built changes (14→24 patterns, PATSEL_W 4→5, the hardware findings). The
+  some as-built changes (14→32 patterns, PATSEL_W 4→5, the hardware findings). The
   **READMEs + this file are the as-built truth.**
 
 ## Pointers

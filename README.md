@@ -10,7 +10,7 @@ the **Sipeed Tang Nano 9K** (HDMI out via DVI/TMDS); later boards add external
 capture (HDMI/FPDLink/GMSL/eDP/LVDS) for genlock/insertion.
 
 > **Status: Mode A implemented & hardware-confirmed.** Tier 0/1 core (VTG +
-> 24-pattern set (incl. local-dimming) + config atomicity) is built and simulation-tested; the Tang
+> 32-pattern set (incl. 2D + 1D local-dimming) + config atomicity) is built and simulation-tested; the Tang
 > Nano 9K HDMI path (DVI/TMDS via Gowin OSER10/ELVDS) runs **clean on real
 > hardware at 480p, 800×600, and 1024×768 (XGA)**. 720p is marginal on the board's
 > emulated-LVDS (PHY rate limit, not the RTL); 1080p is not achievable (rPLL caps
@@ -69,9 +69,11 @@ openFPGALoader -b tangnano9k boards/tangnano9k/build/top_tangnano9k.fs
 
 **Color bars** appear within a couple of seconds. Then use the two buttons:
 
-- **S2** — cycle through all **24 patterns** (solids, grays, H/V ramps, checker,
-  grid, R/G/B channel-isolation ramps, and the local-dimming suite: window,
-  moving window, zone checker, near-black wedge, subtitle, flash).
+- **S2** — cycle through all **32 patterns** (solids, grays, H/V ramps, checker,
+  grid, R/G/B channel-isolation ramps, a **2D local-dimming suite** (window,
+  moving window, zone checker, near-black wedge, subtitle, flash), and a **1D
+  edge-bar local-dimming suite** (zone column, sweep, y-window, alternating
+  zones, h-band, subtitle, flash, dual-highlight) for backlight benchmarking).
 - **S1** — reset back to color bars.
 
 `RES=1024x768` (XGA) is the highest rock-solid mode; on a 16:9 panel it shows
@@ -145,6 +147,13 @@ the RTL (details in [boards/tangnano9k/README.md](boards/tangnano9k/README.md)):
 **P&R seed is pinned** (`NEXTPNR_SEED=2`) so placement — and clock quality near the
 cliff — is reproducible; the build fails any high-rate mode whose TMDS clock can't
 route cleanly. Override with `NEXTPNR_SEED=<n>` to sweep, or `NEXTPNR_SEED=r` for random.
+
+For the **1D edge-bar local-dimming** patterns, set the zone count to your panel's
+LED count with `ZONES=<n>` (default 48), e.g. `ZONES=40 RES=1024x768 ./…/build.sh`.
+The patterns are resolution-independent; the two target panels — `1920×720` (40
+LEDs) and `2560×1440` (47 LEDs) — have mode profiles in `video_modes.svh` but
+exceed this board's PHY, so they need a faster-serializer board (preview them at
+a clean res on the Tang Nano).
 
 ### Timing & resource report
 

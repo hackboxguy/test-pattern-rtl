@@ -49,6 +49,22 @@
     .HSYNC_POL(1'b1), .VSYNC_POL(1'b1)
 `define VIC_1280x720p60  4
 
+// --- 1D local-dimming target panels (resolution-independent core; these exceed
+//     the Tang Nano 9K PHY — for a faster-serializer board + sim verification) ---
+// 1920x720p60 reduced-blank — 12.3" panel, 40-LED bottom bar. ~92.6 MHz pixel
+// (~463 MHz serial). Build the 1D patterns with ZONES=40. H+,V- sync.
+`define VMODE_1920x720p60 \
+    .H_ACTIVE(1920), .H_FP(48),  .H_SYNC(32),  .H_BP(80),  \
+    .V_ACTIVE(720),  .V_FP(3),   .V_SYNC(5),   .V_BP(14),  \
+    .HSYNC_POL(1'b1), .VSYNC_POL(1'b0)
+
+// 2560x1440p60 reduced-blank — 15.6" panel, 47-LED bottom bar. ~241.7 MHz pixel
+// (~1.21 GHz serial). Build the 1D patterns with ZONES=47. H+,V- sync.
+`define VMODE_2560x1440p60 \
+    .H_ACTIVE(2560), .H_FP(48),  .H_SYNC(32),  .H_BP(80),  \
+    .V_ACTIVE(1440), .V_FP(3),   .V_SYNC(5),   .V_BP(33),  \
+    .HSYNC_POL(1'b1), .VSYNC_POL(1'b0)
+
 // 1920x1080p60 — CEA VIC 16. Pixel clock 148.5 MHz. H+,V+ sync.
 `define VMODE_1920x1080p60 \
     .H_ACTIVE(1920), .H_FP(88),  .H_SYNC(44),  .H_BP(148), \

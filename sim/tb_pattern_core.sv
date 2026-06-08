@@ -10,7 +10,8 @@ module tb_pattern_core #(
     parameter int CHK  = 2,   // checker block log2
     parameter int GP   = 2,   // grid pitch log2
     parameter int LW   = 1,   // grid line width
-    parameter int FRAC = 12
+    parameter int FRAC = 12,
+    parameter int ZN   = 48   // 1D local-dimming zones (must match the DUT)
 )();
     localparam int COLOR_W = 8;
     localparam logic [7:0] G25 = 8'(8'hFF >> 2);
@@ -35,12 +36,24 @@ module tb_pattern_core #(
     localparam int LDB1X0 = H / 8,        LDB1X1 = LDB1X0 + H / 6;
     localparam int LDB2X0 = (H * 5) / 12, LDB2X1 = LDB2X0 + H / 4;
     localparam int LDB3X0 = (H * 3) / 4,  LDB3X1 = LDB3X0 + H / 8;
+    // 1D edge-bar family params (must match pat_localdim_1d)
+    localparam int ZC   = ZN / 2;
+    localparam int ZQ1  = ZN / 4;
+    localparam int ZQ3  = (3 * ZN) / 4;
+    localparam int YW_H = V / 8;
+    localparam int YW_T = V / 16;
+    localparam int YW_M = (V - YW_H) / 2;
+    localparam int YW_B = V - YW_H - V / 16;
+    localparam int HB_H = V / 12;
+    localparam int HB_T = V / 8;
+    localparam int HB_M = (V - HB_H) / 2;
+    localparam int HB_B = V - HB_H - V / 8;
 
     logic clk = 1'b0;
     always #5 clk = ~clk;
 
     logic         rst, pat_en;
-    logic [4:0]   pattern_sel;     // 5 bits: 18 patterns (0..17)
+    logic [4:0]   pattern_sel;     // 5 bits: 32 patterns (0..31)
     logic [127:0] param;
     logic         de, hsync, vsync, sof, eol;
     logic [11:0]  x0, yv;
@@ -54,7 +67,8 @@ module tb_pattern_core #(
         .HSYNC_POL(1'b1), .VSYNC_POL(1'b1),
         .COLOR_W(COLOR_W), .HCOORD_W(12), .VCOORD_W(12), .FRAME_W(24),
         .PATSEL_W(5), .NPARAM(4), .PARAM_W(32),
-        .CHECKER_LOG2(CHK), .GRID_PITCH_LOG2(GP), .GRID_LINE_W(LW), .RAMP_FRAC(FRAC)
+        .CHECKER_LOG2(CHK), .GRID_PITCH_LOG2(GP), .GRID_LINE_W(LW), .RAMP_FRAC(FRAC),
+        .LD1D_ZONES(ZN)
     ) dut (
         .clk(clk), .rst(rst), .pat_en(pat_en),
         .pattern_sel(pattern_sel), .param(param),
@@ -66,7 +80,7 @@ module tb_pattern_core #(
 
     function automatic logic [23:0] ref_pixel(input int pat, input int x, input int yy, input int frm);
         logic [7:0] r, g, b;
-        int bar, k, val, nx, ny, mph, mtri, mwx0;
+        int bar, k, val, nx, ny, mph, mtri, mwx0, zidx, sel;
         begin
             r = 8'h00; g = 8'h00; b = 8'h00;
             case (pat)
@@ -143,6 +157,34 @@ module tb_pattern_core #(
                 23: begin // LD_FLASH
                         if ((frm >> 5) & 1) begin r = 8'hFF; g = 8'hFF; b = 8'hFF; end
                     end
+                24, 25, 26, 27, 30, 31: begin // 1D zone-index patterns
+                        nx = (x * INV_H) >> FRAC; if (nx > 255) nx = 255;
+                        zidx = (nx * ZN) >> COLOR_W; if (zidx > ZN - 1) zidx = ZN - 1;
+                        sel  = ((frm & 255) * ZN) >> 8;
+                        case (pat)
+                            24: if (zidx == ZC) begin r=8'hFF; g=8'hFF; b=8'hFF; end          // COLUMN
+                            25: if (zidx == sel) begin r=8'hFF; g=8'hFF; b=8'hFF; end          // SWEEP
+                            26: if (zidx == ZC &&                                              // YWIN
+                                    ((yy>=YW_T && yy<YW_T+YW_H) || (yy>=YW_M && yy<YW_M+YW_H) ||
+                                     (yy>=YW_B && yy<YW_B+YW_H)))
+                                    begin r=8'hFF; g=8'hFF; b=8'hFF; end
+                            27: if ((zidx & 1) == 0) begin r=8'hFF; g=8'hFF; b=8'hFF; end      // ALTZONES (even white)
+                            30: if (zidx == ZC && ((frm>>5)&1)) begin r=8'hFF; g=8'hFF; b=8'hFF; end // FLASH
+                            31: if (zidx == ZQ1 || zidx == ZQ3) begin r=8'hFF; g=8'hFF; b=8'hFF; end // DUAL
+                            default: begin end
+                        endcase
+                    end
+                28: begin // 1D HBAND (full-width top/mid/bottom bands)
+                        if ((yy>=HB_T && yy<HB_T+HB_H) || (yy>=HB_M && yy<HB_M+HB_H) ||
+                            (yy>=HB_B && yy<HB_B+HB_H))
+                            begin r=8'hFF; g=8'hFF; b=8'hFF; end
+                    end
+                29: begin // 1D SUBTITLE (same blocks as the 2D subtitle)
+                        if (yy >= LDSBY0 && yy < LDSBY1 &&
+                            ((x>=LDB1X0 && x<LDB1X1) || (x>=LDB2X0 && x<LDB2X1) ||
+                             (x>=LDB3X0 && x<LDB3X1)))
+                            begin r=8'hFF; g=8'hFF; b=8'hFF; end
+                    end
                 default: begin end
             endcase
             return {r, g, b};
@@ -203,12 +245,12 @@ module tb_pattern_core #(
         rst = 1'b1; pat_en = 1'b0; pattern_sel = 4'd0;
         repeat (4) @(posedge clk);
         rst = 1'b0; pat_en = 1'b1;
-        for (p = 0; p <= 23; p++) begin
+        for (p = 0; p <= 31; p++) begin
             pattern_sel = 5'(p);
             flush_frames(2);
             render_check(p);
         end
-        if (errors == 0) $display("RESULT: PASS  patterns geom=%0dx%0d count=24", H, V);
+        if (errors == 0) $display("RESULT: PASS  patterns geom=%0dx%0d count=32", H, V);
         else             $display("RESULT: FAIL  patterns geom=%0dx%0d errors=%0d", H, V, errors);
         if (errors != 0) $fatal(1, "pattern core test failed");
         $finish;

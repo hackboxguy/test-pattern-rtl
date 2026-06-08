@@ -55,6 +55,8 @@ esac
 # Optional 720p PHY experiments (Codex v2): SERIALIZE_CLK=1, CLK_ALT=1.
 [ "${SERIALIZE_CLK:-0}" = "1" ] && DEFINES="${DEFINES} -DSERIALIZE_TMDS_CLK"
 [ "${CLK_ALT:-0}" = "1" ]       && DEFINES="${DEFINES} -DTMDS_CLK_ALT"
+# 1D local-dimming LED/zone count (match your panel's LED bar, e.g. ZONES=40).
+[ -n "${ZONES:-}" ]             && DEFINES="${DEFINES} -DLD1D_ZONES=${ZONES}"
 echo "Resolution: ${RES}  (pixel_clk target ${PIXFREQ} MHz)   DEFINES='${DEFINES}'"
 
 SRC=(
@@ -63,6 +65,7 @@ SRC=(
   rtl/reusable/pattern/patterns/pat_checker.sv
   rtl/reusable/pattern/patterns/pat_grid.sv
   rtl/reusable/pattern/patterns/pat_localdim.sv
+  rtl/reusable/pattern/patterns/pat_localdim_1d.sv
   rtl/reusable/pattern/pattern_pixel_core.sv
   rtl/reusable/video/video_timing_gen.sv
   rtl/reusable/video/video_delay.sv

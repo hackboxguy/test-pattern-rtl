@@ -22,7 +22,7 @@ module pattern_pixel_core #(
     parameter int HCOORD_W         = 12,
     parameter int VCOORD_W         = 12,
     parameter int FRAME_W          = 24,
-    parameter int PATSEL_W         = 5,    // 5 bits addresses the 24-pattern set
+    parameter int PATSEL_W         = 5,    // 5 bits addresses the 32-pattern set
     parameter int NPARAM           = 4,
     parameter int PARAM_W          = 32,
     // pattern geometry / tuning (Mode A, compile-time)
@@ -32,7 +32,8 @@ module pattern_pixel_core #(
     parameter int GRID_PITCH_LOG2  = 5,    // grid pitch  = 2^5 = 32 px
     parameter int GRID_LINE_W      = 1,
     parameter int RAMP_FRAC        = 12,
-    parameter int STAIR_BITS       = 4     // grayscale staircase: 2^4 = 16 steps
+    parameter int STAIR_BITS       = 4,    // grayscale staircase: 2^4 = 16 steps
+    parameter int LD1D_ZONES       = 48    // 1D local-dimming: LED/zone count across width
 )(
     input  logic                                  clk,
     input  logic                                  rst,         // active-high, synchronous
@@ -110,6 +111,16 @@ module pattern_pixel_core #(
                     .norm_x(ramph_rgb[COLOR_W-1:0]), .norm_y(rampv_rgb[COLOR_W-1:0]),
                     .sub(ld_sub), .rgb(ld_rgb));
 
+    // ---- 1D edge-bar local-dimming family (PAT_LD1D_*; sub = id - PAT_LD1D_COLUMN) ----
+    logic [3*COLOR_W-1:0] ld1d_rgb;
+    logic [2:0]           ld1d_sub;
+    assign ld1d_sub = 3'(pattern_sel - PATSEL_W'(`PAT_LD1D_COLUMN));
+    pat_localdim_1d #(.COLOR_W(COLOR_W), .HCOORD_W(HCOORD_W), .VCOORD_W(VCOORD_W),
+                      .FRAME_W(FRAME_W), .H_ACTIVE(H_ACTIVE), .V_ACTIVE(V_ACTIVE),
+                      .ZONES(LD1D_ZONES))
+        u_localdim_1d (.x(x0), .y(y), .frame(frame),
+                       .norm_x(ramph_rgb[COLOR_W-1:0]), .sub(ld1d_sub), .rgb(ld1d_rgb));
+
     // ---- mux by stable pattern ID ----
     logic [3*COLOR_W-1:0] pix;
     always_comb begin
@@ -136,7 +147,15 @@ module pattern_pixel_core #(
             PATSEL_W'(`PAT_LD_CHECKER_ZONE),
             PATSEL_W'(`PAT_LD_NEARBLACK),
             PATSEL_W'(`PAT_LD_SUBTITLE),
-            PATSEL_W'(`PAT_LD_FLASH):    pix = ld_rgb;   // local-dimming family
+            PATSEL_W'(`PAT_LD_FLASH):    pix = ld_rgb;   // 2D local-dimming family
+            PATSEL_W'(`PAT_LD1D_COLUMN),
+            PATSEL_W'(`PAT_LD1D_SWEEP),
+            PATSEL_W'(`PAT_LD1D_YWIN),
+            PATSEL_W'(`PAT_LD1D_ALTZONES),
+            PATSEL_W'(`PAT_LD1D_HBAND),
+            PATSEL_W'(`PAT_LD1D_SUBTITLE),
+            PATSEL_W'(`PAT_LD1D_FLASH),
+            PATSEL_W'(`PAT_LD1D_DUAL):   pix = ld1d_rgb; // 1D edge-bar local-dimming family
             default:                     pix = {CH_LO, CH_LO, CH_LO}; // PAT_BLACK + disabled IDs
         endcase
         // Blanking pixels are black (FR-SB-3); disabled core is black.

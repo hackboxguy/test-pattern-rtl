@@ -33,7 +33,16 @@
 `define PAT_LD_NEARBLACK    21   // near-black step wedge          (black crush)
 `define PAT_LD_SUBTITLE     22   // subtitle blocks at bottom      (subtitle halo)
 `define PAT_LD_FLASH        23   // full-field black<->white flash (response time)
+// 1D edge-bar local-dimming family (Codex PRD review v4) — pat_localdim_1d sub 0..7.
+`define PAT_LD1D_COLUMN     24   // one centre-zone full-height column   (zone mapping)
+`define PAT_LD1D_SWEEP      25   // one-zone column sweeping L->R         (zone tracking)
+`define PAT_LD1D_YWIN       26   // top/mid/bottom windows in centre zone (light-guide reach)
+`define PAT_LD1D_ALTZONES   27   // even zones white / odd black          (zone separation)
+`define PAT_LD1D_HBAND      28   // full-width top/mid/bottom bands        (vertical uniformity)
+`define PAT_LD1D_SUBTITLE   29   // white blocks near the bottom edge      (bottom-edge bloom)
+`define PAT_LD1D_FLASH      30   // centre-zone column flash               (zone response)
+`define PAT_LD1D_DUAL       31   // two columns (1/4 & 3/4 zones)          (independent control)
 
-`define PAT_COUNT       24
+`define PAT_COUNT       32
 
 `endif // PATTERN_IDS_SVH

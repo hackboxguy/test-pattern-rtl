@@ -21,6 +21,7 @@ RTL="rtl/reusable/video/video_timing_gen.sv \
      rtl/reusable/pattern/patterns/pat_checker.sv \
      rtl/reusable/pattern/patterns/pat_grid.sv \
      rtl/reusable/pattern/patterns/pat_localdim.sv \
+     rtl/reusable/pattern/patterns/pat_localdim_1d.sv \
      rtl/reusable/pattern/pattern_pixel_core.sv \
      rtl/reusable/video/video_source_core.sv \
      rtl/reusable/cfg/cfg_pipe.sv \
@@ -58,6 +59,9 @@ build_run vtg_101x53 tb_video_timing_gen sim/tb_video_timing_gen.sv -GH=101 -GV=
 build_run pat_32x24  tb_pattern_core sim/tb_pattern_core.sv                         || rc=1
 build_run pat_13x7   tb_pattern_core sim/tb_pattern_core.sv -GH=13 -GV=7            || rc=1
 build_run pat_101x53 tb_pattern_core sim/tb_pattern_core.sv -GH=101 -GV=53          || rc=1
+# 1D local-dimming zone math at the target LED counts (40, 47) on sane widths
+build_run pat_z40    tb_pattern_core sim/tb_pattern_core.sv -GH=200 -GV=48 -GZN=40  || rc=1
+build_run pat_z47    tb_pattern_core sim/tb_pattern_core.sv -GH=235 -GV=48 -GZN=47  || rc=1
 
 # Config atomicity (cross-domain shadow -> latch-on-sof commit)
 build_run cfg_atomic tb_cfg_atomic sim/tb_cfg_atomic.sv                             || rc=1

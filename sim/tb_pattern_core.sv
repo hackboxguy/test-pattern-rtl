@@ -19,6 +19,8 @@ module tb_pattern_core #(
     localparam int INV_H = ((1 << (COLOR_W + FRAC)) + (H / 2)) / H;
     localparam int INV_V = ((1 << (COLOR_W + FRAC)) + (V / 2)) / V;
     localparam int PITCH = (1 << GP);
+    localparam int STAIR_BITS = 4;   // must match pattern_pixel_core
+    localparam int STAIR_MUL  = ((1 << COLOR_W) - 1) / ((1 << STAIR_BITS) - 1);  // 255/15 = 17
 
     logic clk = 1'b0;
     always #5 clk = ~clk;
@@ -80,7 +82,16 @@ module tb_pattern_core #(
                 10: begin val = (yy * INV_V) >> FRAC; if (val > 255) val = 255; r = 8'(val); g = r; b = r; end
                 11: begin if (((x >> CHK) & 1) ^ ((yy >> CHK) & 1)) begin r = 8'hFF; g = 8'hFF; b = 8'hFF; end end
                 12: begin if ((x & 1) ^ (yy & 1))                   begin r = 8'hFF; g = 8'hFF; b = 8'hFF; end end
-                13: begin if (((x % PITCH) < LW) || ((yy % PITCH) < LW)) begin r = 8'hFF; g = 8'hFF; b = 8'hFF; end end
+                13: begin // grid + closing border on right/bottom edges
+                        if (((x % PITCH) < LW) || ((yy % PITCH) < LW) ||
+                            (x >= H - LW) || (yy >= V - LW))
+                            begin r = 8'hFF; g = 8'hFF; b = 8'hFF; end
+                    end
+                14: begin // grayscale staircase = top STAIR_BITS of ramp_h, replicated
+                        val = (x * INV_H) >> FRAC; if (val > 255) val = 255;
+                        r = 8'(((val >> (8 - STAIR_BITS)) * STAIR_MUL));
+                        g = r; b = r;
+                    end
                 default: begin end
             endcase
             return {r, g, b};
@@ -141,12 +152,12 @@ module tb_pattern_core #(
         rst = 1'b1; pat_en = 1'b0; pattern_sel = 4'd0;
         repeat (4) @(posedge clk);
         rst = 1'b0; pat_en = 1'b1;
-        for (p = 0; p <= 13; p++) begin
+        for (p = 0; p <= 14; p++) begin
             pattern_sel = 4'(p);
             flush_frames(2);
             render_check(p);
         end
-        if (errors == 0) $display("RESULT: PASS  patterns geom=%0dx%0d count=14", H, V);
+        if (errors == 0) $display("RESULT: PASS  patterns geom=%0dx%0d count=15", H, V);
         else             $display("RESULT: FAIL  patterns geom=%0dx%0d errors=%0d", H, V, errors);
         if (errors != 0) $fatal(1, "pattern core test failed");
         $finish;

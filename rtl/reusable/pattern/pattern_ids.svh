@@ -22,5 +22,8 @@
 `define PAT_CHECKER     11
 `define PAT_CHECKER_1PX 12
 `define PAT_GRID        13
+`define PAT_STAIRCASE   14   // horizontal grayscale staircase (discrete steps)
+
+`define PAT_COUNT       15
 
 `endif // PATTERN_IDS_SVH

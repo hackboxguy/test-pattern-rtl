@@ -31,7 +31,8 @@ module pattern_pixel_core #(
     parameter int CHECKER_LOG2     = 4,    // checker block = 2^4 = 16 px
     parameter int GRID_PITCH_LOG2  = 5,    // grid pitch  = 2^5 = 32 px
     parameter int GRID_LINE_W      = 1,
-    parameter int RAMP_FRAC        = 12
+    parameter int RAMP_FRAC        = 12,
+    parameter int STAIR_BITS       = 4     // grayscale staircase: 2^4 = 16 steps
 )(
     input  logic                                  clk,
     input  logic                                  rst,         // active-high, synchronous
@@ -84,8 +85,16 @@ module pattern_pixel_core #(
         u_checker1 (.x(x0), .y(y), .rgb(checker1_rgb));
 
     pat_grid #(.COLOR_W(COLOR_W), .HCOORD_W(HCOORD_W), .VCOORD_W(VCOORD_W),
+               .H_ACTIVE(H_ACTIVE), .V_ACTIVE(V_ACTIVE),
                .PITCH_LOG2(GRID_PITCH_LOG2), .LINE_W(GRID_LINE_W))
         u_grid (.x(x0), .y(y), .rgb(grid_rgb));
+
+    // ---- grayscale staircase: quantize the horizontal ramp value to 2^STAIR_BITS
+    //      steps (top STAIR_BITS bits replicated). Reuses the ramp_h datapath. ----
+    logic [COLOR_W-1:0]   stair_val;
+    logic [3*COLOR_W-1:0] stair_rgb;
+    assign stair_val = {(COLOR_W/STAIR_BITS){ramph_rgb[COLOR_W-1 -: STAIR_BITS]}};
+    assign stair_rgb = {stair_val, stair_val, stair_val};
 
     // ---- mux by stable pattern ID ----
     logic [3*COLOR_W-1:0] pix;
@@ -104,6 +113,7 @@ module pattern_pixel_core #(
             PATSEL_W'(`PAT_CHECKER):     pix = checker_rgb;
             PATSEL_W'(`PAT_CHECKER_1PX): pix = checker1_rgb;
             PATSEL_W'(`PAT_GRID):        pix = grid_rgb;
+            PATSEL_W'(`PAT_STAIRCASE):   pix = stair_rgb;
             default:                     pix = {CH_LO, CH_LO, CH_LO}; // PAT_BLACK + disabled IDs
         endcase
         // Blanking pixels are black (FR-SB-3); disabled core is black.

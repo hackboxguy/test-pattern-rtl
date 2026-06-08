@@ -48,7 +48,7 @@ module top_tangnano9k (
 
     // ---- pattern select via S2 (power-on = color bars) ----
     logic [3:0] pattern_sel;
-    gpio_button_ctrl #(.PATSEL_W(4), .N_PATTERNS(14), .RESET_SEL(`PAT_COLOR_BARS),
+    gpio_button_ctrl #(.PATSEL_W(4), .N_PATTERNS(`PAT_COUNT), .RESET_SEL(`PAT_COLOR_BARS),
                        .ACTIVE_LOW(1'b1)) u_btn (
         .clk(pixel_clk), .rst(rst_pix), .btn(key), .pattern_sel(pattern_sel)
     );

@@ -20,11 +20,17 @@ source <path-to>/oss-cad-suite/environment
 
 ## Build status
 
-| Stage | Status |
+| Mode | Hardware result |
 |---|---|
-| Portable cores (`video_source_core`, `dvi_tmds_encoder`, `gpio_button_ctrl`, `reset_sync`) | Simulation-verified (`make sim`). |
-| Gowin build (synth_gowin → nextpnr-himbaechel → gowin_pack) | Author-validated against apicula DVI; **build/display to be confirmed with OSS CAD Suite**. |
-| On-screen display | Pending himbaechel build + flash. |
+| **640x480p60** (default) | ✅ **All 18 patterns clean** on real HDMI — recommended mode. 126 MHz serial, comfortable for the GW1NR-9C emulated-LVDS. |
+| **1280x720p60** | ⚠️ Builds & timing-closes, displays, but **marginal on the board's emulated-LVDS** (371 MHz serial): colored vertical lines at value transitions on gradients, and placement-sensitive (small RTL changes can tip the green/blue lanes, including the sync-carrying blue lane → momentary sync loss). |
+| **1920x1080p60** | ❌ Not buildable — rPLL CLKOUT caps at 600 MHz (needs 742.5). |
+
+The portable cores are simulation-verified (`make sim`) and the 480p hardware
+result confirms the RTL is correct: the 720p artifacts are the **ELVDS PHY at its
+margin**, not a logic bug (R=G=B is emitted; the lines are physical, at value
+transitions). The same resolution-independent core would run clean at higher
+rates on a board with true-LVDS / a faster serializer.
 
 > History: an earlier nextpnr-gowin 0.6 build packed a bitstream but showed a
 > blank screen — root-caused to the missing CLKDIV (see toolchain note above).
@@ -61,8 +67,8 @@ Build with `RES=480p|720p|1080p ./boards/tangnano9k/flow/build.sh`.
 
 | Mode | pixel / serial | IDIV / FBDIV / ODIV | Status |
 |---|---|---|---|
-| 640x480p60  | 25.2 / 126.0 MHz   | 2 / 13 / 4 | ✅ hardware-confirmed |
-| 1280x720p60 | 74.25 / 371.25 MHz | 3 / 54 / 2 | ✅ hardware-confirmed (3-stage encoder, Fmax ~94 MHz) |
+| 640x480p60  | 25.2 / 126.0 MHz   | 2 / 13 / 4 | ✅ all patterns clean (recommended) |
+| 1280x720p60 | 74.25 / 371.25 MHz | 3 / 54 / 2 | ⚠️ marginal on ELVDS (gradient/transition artifacts) |
 | 1920x1080p60| 148.5 / 742.5 MHz  | 1 / 54 / 2 | ❌ **NOT BUILDABLE** on this board |
 
 **1080p60 is not achievable on the Tang Nano 9K (GW1NR-9C)** — a hard limit, not a

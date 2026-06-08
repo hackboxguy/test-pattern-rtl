@@ -10,11 +10,11 @@ the **Sipeed Tang Nano 9K** (HDMI out via DVI/TMDS); later boards add external
 capture (HDMI/FPDLink/GMSL/eDP/LVDS) for genlock/insertion.
 
 > **Status: Mode A implemented & hardware-confirmed.** Tier 0/1 core (VTG +
-> 14-pattern v1 set + config atomicity) is built and simulation-tested; the
-> Tang Nano 9K HDMI path runs **640x480p60 and 1280x720p60 on real hardware**
-> (DVI/TMDS via Gowin OSER10/ELVDS). 1080p60 is not achievable on this board
-> (rPLL caps at 600 MHz). Mode B / AUTO / AXIS modules are interface stubs
-> (later milestones). See the PRD milestones.
+> 18-pattern set + config atomicity) is built and simulation-tested; the Tang
+> Nano 9K HDMI path runs **640x480p60 cleanly on real hardware** (all patterns,
+> DVI/TMDS via Gowin OSER10/ELVDS). 720p60 builds and displays but is marginal on
+> the board's emulated-LVDS; 1080p60 is not achievable (rPLL caps at 600 MHz).
+> Mode B / AUTO / AXIS modules are interface stubs (later milestones). See PRD.
 
 📄 **Full spec:** [docs/pattern-generator-rtl-prd.md](docs/pattern-generator-rtl-prd.md)
 

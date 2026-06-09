@@ -156,6 +156,23 @@ LEDs) and `2560×1440` (47 LEDs) — have mode profiles in `video_modes.svh` but
 exceed this board's PHY, so they need a faster-serializer board (preview them at
 a clean res on the Tang Nano).
 
+### Named-panel profiles (exact fixed timings)
+
+To build for a specific panel's exact timings, add a row to
+[`boards/tangnano9k/displays.conf`](boards/tangnano9k/displays.conf) (H/V
+active·FP·sync·BP, polarities, pixel clock, LED-zone count) and select it by name:
+
+```bash
+PANEL=12.3-nq1 ./boards/tangnano9k/flow/build.sh
+```
+
+The build emits the exact VTG timings and **solves the Gowin rPLL dividers** from
+the pixel clock (12.3-nq1 → 94.52 MHz pixel → `IDIV=1·FBDIV=34·ODIV=2`, 472.5 MHz
+serial). It errors cleanly if the clock exceeds the rPLL's 600 MHz cap, and flags
+panels above the ~325 MHz ELVDS cliff (they build for a future board but won't
+display cleanly here). Timings are transcribed from
+[docs/video-timings.md](docs/video-timings.md).
+
 ### Timing & resource report
 
 Every build prints a timing + resource summary (and saves it to

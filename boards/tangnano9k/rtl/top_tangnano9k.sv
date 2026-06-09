@@ -32,7 +32,9 @@ module top_tangnano9k (
     output logic       tmds_clk_n
 );
     // ---- resolution select (default 480p; -DBUILD_720P or -DBUILD_1080P) ----
-`ifdef BUILD_1080P
+`ifdef PANEL_OVERRIDE
+    localparam int PLL_IDIV = `VM_PLL_IDIV, PLL_FBDIV = `VM_PLL_FBDIV, PLL_ODIV = `VM_PLL_ODIV;  // solved by build.sh
+`elsif BUILD_1080P
     localparam int PLL_IDIV = 1, PLL_FBDIV = 54, PLL_ODIV = 2;   // 742.5 MHz serial (VCO 1485 -> out of range!)
 `elsif BUILD_1920X720
     localparam int PLL_IDIV = 0, PLL_FBDIV = 16, PLL_ODIV = 2;   // ~459 MHz serial (pixel ~91.8 MHz) — EXCEEDS ELVDS cliff; for a faster board
@@ -71,7 +73,11 @@ module top_tangnano9k (
     logic [11:0] x0, y;
     logic [23:0] frame, rgb;
     video_source_core #(
-`ifdef BUILD_1080P
+`ifdef PANEL_OVERRIDE
+        .H_ACTIVE(`VM_H_ACTIVE), .H_FP(`VM_H_FP), .H_SYNC(`VM_H_SYNC), .H_BP(`VM_H_BP),
+        .V_ACTIVE(`VM_V_ACTIVE), .V_FP(`VM_V_FP), .V_SYNC(`VM_V_SYNC), .V_BP(`VM_V_BP),
+        .HSYNC_POL(`VM_HPOL), .VSYNC_POL(`VM_VPOL),
+`elsif BUILD_1080P
         `VMODE_1920x1080p60,
 `elsif BUILD_1920X720
         `VMODE_1920x720p60,

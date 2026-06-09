@@ -78,6 +78,12 @@ per-line recovery at high rate. The same core runs higher on a true-LVDS board.
   high-rate modes (800x600/XGA/720rb/720p). Override `NEXTPNR_SEED=<n>` to sweep,
   `=r` for random. (Symptom if you see it: minute-long black screen before lock.)
 - **1080p is physically impossible here** (742.5 MHz > rPLL 600 MHz max).
+- **`PANEL=<name>` builds a named fixed-timing display** from `boards/tangnano9k/
+  displays.conf` (transcribed subset of `docs/video-timings.md`): emits exact VTG
+  timing defines (`VM_*`, consumed by the top's `PANEL_OVERRIDE` ifdef branch) and
+  **solves the rPLL dividers** from the pixel clock (errors if >600 MHz CLKOUT;
+  flags >325 MHz serial as over-cliff/EXPERIMENTAL). Only 12.3/12.3-nq1 are
+  rPLL-buildable here; the rest need a faster board. `PANEL` not `DISPLAY` (X11).
 
 ## Pattern IDs (pattern_ids.svh, PAT_COUNT=32 — fills PATSEL_W=5 exactly)
 

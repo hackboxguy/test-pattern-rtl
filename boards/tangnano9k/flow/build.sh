@@ -41,6 +41,25 @@ done
 DEVICE="GW1NR-LV9QN88PC6/I5"   # nextpnr-gowin part string (Tang Nano 9K)
 FAMILY="GW1N-9C"               # nextpnr --family / gowin_pack -d
 
+# Solve Gowin rPLL dividers for a target serial clock (MHz) from the 27 MHz input.
+# Echoes "IDIV FBDIV ODIV CLKOUT" (closest CLKOUT within range) or "FAIL".
+# Constraints: CLKOUT 3.125-600 MHz, VCO=CLKOUT*ODIV 400-1200 MHz; prefer lower IDIV.
+pll_solve() {
+  awk -v t="$1" 'BEGIN{
+    best=1e18; bi=99;
+    for(i=0;i<64;i++) for(f=0;f<64;f++){
+      clk = 27.0*(f+1)/(i+1);
+      if(clk < 3.125 || clk > 600) continue;
+      ok=0; for(o=2;o<=128;o+=2){ if(clk*o>=400 && clk*o<=1200){ok=1; bo=o; break;} }
+      if(!ok) continue;
+      e = (clk>t)? clk-t : t-clk;
+      if(e < best-1e-9 || (e < best+1e-9 && i < bi)){ best=e; bi=i; bf=f; bod=bo; bclk=clk; }
+    }
+    if(bi==99 || best > t*0.02 + 0.05) print "FAIL";
+    else printf "%d %d %d %.3f\n", bi, bf, bod, bclk;
+  }'
+}
+
 # Resolution: RES=480p (default), 720p, or 1080p. PIXFREQ = real pixel clock (MHz).
 RES="${RES:-480p}"
 case "$RES" in
@@ -53,9 +72,29 @@ case "$RES" in
   1080p)    DEFINES="-DBUILD_1080P";    PIXFREQ=148.5 ;;
   *) echo "ERROR: RES must be 480p, 800x600, 1024x768, 720rb, 1920x720, 720p, or 1080p (got '$RES')"; exit 1 ;;
 esac
+LABEL="$RES"
+
+# PANEL=<name>: a full named-display profile from displays.conf (exact timings +
+# solved rPLL). Overrides RES. (Uses PANEL, not DISPLAY, to avoid clobbering X11.)
+PANEL="${PANEL:-}"
+if [ -n "$PANEL" ]; then
+  CONF="boards/tangnano9k/displays.conf"
+  row=$(awk -v n="$PANEL" '$1==n {print; exit}' "$CONF")
+  [ -z "$row" ] && { echo "ERROR: PANEL '$PANEL' not in $CONF (have: $(awk '!/^#/&&NF{printf "%s ",$1}' "$CONF"))"; exit 1; }
+  read -r _n HACT HFP HSY HBP VACT VFP VSY VBP HPOL VPOL PIXMHZ PZONES <<< "$row"
+  SER=$(awk "BEGIN{printf \"%.2f\", $PIXMHZ*5}")
+  sol=$(pll_solve "$SER")
+  [ "$sol" = "FAIL" ] && { echo "ERROR: PANEL '$PANEL' needs ${SER} MHz serial > rPLL 600 MHz max -- needs a faster board."; exit 1; }
+  read -r PIDIV PFBDIV PODIV PCLK <<< "$sol"
+  DEFINES="-DPANEL_OVERRIDE -DVM_H_ACTIVE=$HACT -DVM_H_FP=$HFP -DVM_H_SYNC=$HSY -DVM_H_BP=$HBP -DVM_V_ACTIVE=$VACT -DVM_V_FP=$VFP -DVM_V_SYNC=$VSY -DVM_V_BP=$VBP -DVM_HPOL=$HPOL -DVM_VPOL=$VPOL -DVM_PLL_IDIV=$PIDIV -DVM_PLL_FBDIV=$PFBDIV -DVM_PLL_ODIV=$PODIV"
+  PIXFREQ="$PIXMHZ"; LABEL="PANEL=$PANEL"; ZONES="${ZONES:-$PZONES}"
+  awk "BEGIN{exit !($SER > 330)}" && EXPERIMENTAL=1   # over the ~325 MHz ELVDS cliff
+  echo "PANEL ${PANEL}: ${HACT}x${VACT}  pixel ${PIXMHZ} MHz / serial ${SER} MHz  -> rPLL IDIV=$PIDIV FBDIV=$PFBDIV ODIV=$PODIV (CLKOUT ${PCLK})"
+fi
+
 EXPERIMENTAL="${EXPERIMENTAL:-0}"
 [ "${EXPERIMENTAL}" = "1" ] && {
-  echo "!! EXPERIMENTAL ${RES}: ~$(awk "BEGIN{printf \"%.0f\", ${PIXFREQ}*5}") MHz serial exceeds the Tang Nano 9K"
+  echo "!! EXPERIMENTAL ${LABEL}: ~$(awk "BEGIN{printf \"%.0f\", ${PIXFREQ}*5}") MHz serial exceeds the Tang Nano 9K"
   echo "!! emulated-LVDS clean ceiling (~325 MHz). Building for a future faster-serializer board;"
   echo "!! not expected to display cleanly here. Timing/clock gates are advisory for this target."
 }
@@ -128,7 +167,7 @@ if [ -n "${fmax}" ]; then
   echo "pixel_clk Fmax (worst): ${fmax} MHz  (need ${PIXFREQ} MHz)"
   awk "BEGIN{exit !(${fmax} >= ${PIXFREQ})}" || {
     echo "TIMING FAIL: pixel_clk Fmax ${fmax} MHz < ${PIXFREQ} MHz target"
-    [ "${EXPERIMENTAL}" = "1" ] && echo "  (EXPERIMENTAL ${RES}: packing anyway for a future board)" || exit 1; }
+    [ "${EXPERIMENTAL}" = "1" ] && echo "  (EXPERIMENTAL ${LABEL}: packing anyway for a future board)" || exit 1; }
 else
   echo "WARNING: could not parse pixel_clk Fmax from pnr log"
 fi

@@ -66,8 +66,13 @@ the board reverts to the Sipeed factory demo). To make it stick, flash it (below
 **`-f`** to write the on-board SPI flash so the bitstream survives a power-cycle:
 
 ```bash
-openFPGALoader -b tangnano9k -f --verify boards/tangnano9k/build/top_tangnano9k.fs
+openFPGALoader -b tangnano9k -f boards/tangnano9k/build/top_tangnano9k.fs
 ```
+
+A successful write ends with `CRC check: Success` — that confirms the flashed
+config is valid (the FPGA validates the bitstream CRC on load). Explicit
+`--verify` read-back isn't supported on this part, so the CRC check is the
+integrity confirmation. Power-cycle: the board now boots this bitstream.
 
 **Restoring the Sipeed factory demo — just re-download it.** The shipped "Pico SoC"
 image is a *stock* Sipeed demo, not unique to your board, so there's no need to

@@ -102,7 +102,11 @@ Reused unchanged: `rtl/reusable/**`, `boards/common/dvi_tmds_encoder.sv`,
 ## Hard limits to sanity-check before a build (Tang Nano 9K)
 
 1. **rPLL CLKOUT ≤ 600 MHz** ⇒ serial = pixel×5 ≤ 600 ⇒ **pixel ≤ ~120 MHz**.
-2. **Fabric Fmax** (encoder critical path, ~86–112 MHz) ≥ pixel clock.
+2. **Fabric Fmax** (encoder critical path, **~88–107 MHz, seed-dependent**) ≥ pixel
+   clock. Near the top of that range a build can miss by a few % on an unlucky seed
+   — reseed with `NEXTPNR_SEED=<n>` (e.g. 12.3-nq1's 94.5 MHz closes at the pinned
+   default and on 4/6 sampled seeds, but missed on two). If a real target sits
+   consistently at the edge, pipeline the TMDS encoder further.
 3. **ELVDS clean ceiling** ≈ **325 MHz serial** (≈ 65 MHz pixel). Above → artifacts.
 4. **Active coordinate width** ⇒ `H_ACTIVE ≤ 2^HCOORD_W` and `V_ACTIVE ≤ 2^VCOORD_W`
    (the VTG sizes its internal h/v counters from the *totals* automatically, so only

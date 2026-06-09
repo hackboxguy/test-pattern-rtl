@@ -62,6 +62,10 @@ build_run pat_101x53 tb_pattern_core sim/tb_pattern_core.sv -GH=101 -GV=53      
 # 1D local-dimming zone math at the target LED counts (40, 47) on sane widths
 build_run pat_z40    tb_pattern_core sim/tb_pattern_core.sv -GH=200 -GV=48 -GZN=40  || rc=1
 build_run pat_z47    tb_pattern_core sim/tb_pattern_core.sv -GH=235 -GV=48 -GZN=47  || rc=1
+# Intent-level zone checks (boundary positions, transition counts) per LED count
+build_run ld_int_40  tb_localdim_intent sim/tb_localdim_intent.sv -GH=240 -GV=24 -GZN=40 || rc=1
+build_run ld_int_47  tb_localdim_intent sim/tb_localdim_intent.sv -GH=235 -GV=24 -GZN=47 || rc=1
+build_run ld_int_48  tb_localdim_intent sim/tb_localdim_intent.sv -GH=192 -GV=24 -GZN=48 || rc=1
 
 # Config atomicity (cross-domain shadow -> latch-on-sof commit)
 build_run cfg_atomic tb_cfg_atomic sim/tb_cfg_atomic.sv                             || rc=1

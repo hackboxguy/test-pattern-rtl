@@ -53,7 +53,7 @@ module video_source_core #(
     output logic [FRAME_W-1:0]      frame,
     output logic [3*COLOR_W-1:0]    rgb
 );
-    localparam int PAT_LAT = 1;  // MUST match pattern_pixel_core PATTERN_LATENCY
+    localparam int PAT_LAT = 2;  // MUST match pattern_pixel_core PATTERN_LATENCY
 
     // The output active coordinates x0/y must fit their width (FR-CORE-6); a very
     // wide/tall panel needs HCOORD_W/VCOORD_W widened (e.g. 27" 4032-wide needs 13).
@@ -102,6 +102,7 @@ module video_source_core #(
     end
 
     // --- pattern core (latency PAT_LAT) ---
+    logic core_de_mask;  // ppc=1: redundant with the delayed de below
     pattern_pixel_core #(
         .COLOR_W(COLOR_W), .PIXELS_PER_CLOCK(1),
         .HCOORD_W(HCOORD_W), .VCOORD_W(VCOORD_W), .FRAME_W(FRAME_W),
@@ -117,7 +118,6 @@ module video_source_core #(
         .pat_en(pat_en_c), .pattern_sel(pattern_sel_c), .param(param_c),
         .rgb(rgb), .de_mask_out(core_de_mask)
     );
-    logic core_de_mask;  // ppc=1: redundant with the delayed de below
     logic _unused_dm;
     assign _unused_dm = &{1'b0, core_de_mask};
 

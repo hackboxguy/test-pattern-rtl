@@ -28,6 +28,7 @@ behavioral/timing references only.
 | `hdl-util/hdmi` | MIT/Apache-2.0 | Optional future true-HDMI output reference (packets/audio/infoframes). |
 | LiteVideo | BSD-2 (deprecated) | Mode B/capture & SoC-integration concepts only. |
 | Sipeed `TangNano-9K-example` | unclear | HW bring-up notes only (license unconfirmed — not copied). |
+| Digilent Arty-Z7-20 master XDC + `rgb2dvi` docs | MIT / Digilent docs | Arty Z7 HDMI source pins, MMCM/OSERDESE2 clocking and serializer topology references only. |
 | AMD/Xilinx Video TPG | proprietary | Feature/control-model benchmark only. |
 | OpenCores VGA blocks | LGPL | Excluded entirely (copyleft). |
 

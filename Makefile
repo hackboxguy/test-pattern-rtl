@@ -1,5 +1,5 @@
 # test-pattern-rtl — convenience targets. See docs/pattern-generator-rtl-prd.md.
-.PHONY: check lint yosys-smoke provenance sim report
+.PHONY: check lint yosys-smoke provenance sim report build-artyz7 report-artyz7
 
 check: lint yosys-smoke provenance sim ## run all gates
 
@@ -17,3 +17,9 @@ sim: ## self-checking Verilator sims (VTG + patterns, incl. odd geometry)
 
 report: ## show the last Tang Nano 9K build's timing + resource report
 	@./boards/tangnano9k/flow/build.sh report
+
+build-artyz7: ## build the Arty Z7-20 bitstream with Vivado (default RES=1080p)
+	RES="$(RES)" ZONES="$(ZONES)" CLK_ALT="$(CLK_ALT)" ./boards/artyz7/flow/build.sh
+
+report-artyz7: ## show the last Arty Z7-20 Vivado build report
+	@./boards/artyz7/flow/build.sh report

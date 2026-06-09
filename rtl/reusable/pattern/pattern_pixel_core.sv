@@ -8,7 +8,7 @@
 // from rtl/reusable/pattern/patterns/ and muxed by the stable pattern IDs in
 // pattern_ids.svh. Disabled / not-yet-implemented IDs return black (FR-ABI-2).
 //
-// Contract (FR-CORE-4): fixed PATTERN_LATENCY (= 1); emits rgb / de_mask_out
+// Contract (FR-CORE-4): fixed PATTERN_LATENCY (= 2); emits rgb / de_mask_out
 // ONLY. Sideband alignment is owned by the Tier 1/2 wrapper (video_source_core).
 //
 // M1 scope: patterns use the compile-time H_ACTIVE/V_ACTIVE parameters (Mode A),
@@ -53,7 +53,7 @@ module pattern_pixel_core #(
     output logic [PIXELS_PER_CLOCK-1:0]           de_mask_out
 );
 
-    localparam int PATTERN_LATENCY = 1;  // fixed Tier 0 latency (PRD FR-CORE-4)
+    localparam int PATTERN_LATENCY = 2;  // fixed Tier 0 latency (PRD FR-CORE-4)
 
     // v1 restricts to one pixel per clock (PRD §8.1, FR-CORE-3).
     if (PIXELS_PER_CLOCK != 1) begin : g_ppc_guard
@@ -67,28 +67,57 @@ module pattern_pixel_core #(
     localparam logic [COLOR_W-1:0] G50 = CH_HI >> 1;
     localparam logic [COLOR_W-1:0] G75 = CH_HI - (CH_HI >> 2);
 
-    // ---- computational patterns (combinational submodules) ----
+    // ---- stage 1: align non-ramp inputs with the registered ramp multiply ----
+    logic                                  de_s1;
+    logic [PIXELS_PER_CLOCK-1:0]           de_mask_s1;
+    logic [HCOORD_W-1:0]                   x0_s1;
+    logic [VCOORD_W-1:0]                   y_s1;
+    logic [FRAME_W-1:0]                    frame_s1;
+    logic                                  pat_en_s1;
+    logic [PATSEL_W-1:0]                   pattern_sel_s1;
+
+    always_ff @(posedge clk) begin
+        if (rst) begin
+            de_s1          <= 1'b0;
+            de_mask_s1     <= '0;
+            x0_s1          <= '0;
+            y_s1           <= '0;
+            frame_s1       <= '0;
+            pat_en_s1      <= 1'b0;
+            pattern_sel_s1 <= '0;
+        end else begin
+            de_s1          <= de;
+            de_mask_s1     <= de_mask;
+            x0_s1          <= x0;
+            y_s1           <= y;
+            frame_s1       <= frame;
+            pat_en_s1      <= pat_en;
+            pattern_sel_s1 <= pattern_sel;
+        end
+    end
+
+    // ---- computational patterns ----
     logic [3*COLOR_W-1:0] bars_rgb, ramph_rgb, rampv_rgb, checker_rgb, checker1_rgb, grid_rgb;
 
     pat_color_bars #(.COLOR_W(COLOR_W), .HCOORD_W(HCOORD_W), .H_ACTIVE(H_ACTIVE))
-        u_bars (.x(x0), .rgb(bars_rgb));
+        u_bars (.x(x0_s1), .rgb(bars_rgb));
 
     pat_ramp #(.COLOR_W(COLOR_W), .COORD_W(HCOORD_W), .DIM(H_ACTIVE), .FRAC(RAMP_FRAC))
-        u_ramp_h (.coord(x0), .rgb(ramph_rgb));
+        u_ramp_h (.clk(clk), .rst(rst), .coord(x0), .rgb(ramph_rgb));
 
     pat_ramp #(.COLOR_W(COLOR_W), .COORD_W(VCOORD_W), .DIM(V_ACTIVE), .FRAC(RAMP_FRAC))
-        u_ramp_v (.coord(y), .rgb(rampv_rgb));
+        u_ramp_v (.clk(clk), .rst(rst), .coord(y), .rgb(rampv_rgb));
 
     pat_checker #(.COLOR_W(COLOR_W), .HCOORD_W(HCOORD_W), .VCOORD_W(VCOORD_W), .BLOCK_LOG2(CHECKER_LOG2))
-        u_checker (.x(x0), .y(y), .rgb(checker_rgb));
+        u_checker (.x(x0_s1), .y(y_s1), .rgb(checker_rgb));
 
     pat_checker #(.COLOR_W(COLOR_W), .HCOORD_W(HCOORD_W), .VCOORD_W(VCOORD_W), .BLOCK_LOG2(0))
-        u_checker1 (.x(x0), .y(y), .rgb(checker1_rgb));
+        u_checker1 (.x(x0_s1), .y(y_s1), .rgb(checker1_rgb));
 
     pat_grid #(.COLOR_W(COLOR_W), .HCOORD_W(HCOORD_W), .VCOORD_W(VCOORD_W),
                .H_ACTIVE(H_ACTIVE), .V_ACTIVE(V_ACTIVE),
                .PITCH_LOG2(GRID_PITCH_LOG2), .LINE_W(GRID_LINE_W))
-        u_grid (.x(x0), .y(y), .rgb(grid_rgb));
+        u_grid (.x(x0_s1), .y(y_s1), .rgb(grid_rgb));
 
     // ---- grayscale staircase: quantize the horizontal ramp value to 2^STAIR_BITS
     //      steps (top STAIR_BITS bits replicated). Reuses the ramp_h datapath. ----
@@ -104,10 +133,10 @@ module pattern_pixel_core #(
     // frame counter for motion/temporal patterns.
     logic [3*COLOR_W-1:0] ld_rgb;
     logic [2:0]           ld_sub;
-    assign ld_sub = 3'(pattern_sel - PATSEL_W'(`PAT_LD_WINDOW));
+    assign ld_sub = 3'(pattern_sel_s1 - PATSEL_W'(`PAT_LD_WINDOW));
     pat_localdim #(.COLOR_W(COLOR_W), .HCOORD_W(HCOORD_W), .VCOORD_W(VCOORD_W),
                    .FRAME_W(FRAME_W), .H_ACTIVE(H_ACTIVE), .V_ACTIVE(V_ACTIVE))
-        u_localdim (.x(x0), .y(y), .frame(frame),
+        u_localdim (.x(x0_s1), .y(y_s1), .frame(frame_s1),
                     .norm_x(ramph_rgb[COLOR_W-1:0]), .norm_y(rampv_rgb[COLOR_W-1:0]),
                     .sub(ld_sub), .rgb(ld_rgb));
 
@@ -118,12 +147,13 @@ module pattern_pixel_core #(
     pat_localdim_1d #(.COLOR_W(COLOR_W), .HCOORD_W(HCOORD_W), .VCOORD_W(VCOORD_W),
                       .FRAME_W(FRAME_W), .H_ACTIVE(H_ACTIVE), .V_ACTIVE(V_ACTIVE),
                       .ZONES(LD1D_ZONES))
-        u_localdim_1d (.x(x0), .y(y), .frame(frame), .sub(ld1d_sub), .rgb(ld1d_rgb));
+        u_localdim_1d (.clk(clk), .rst(rst), .x(x0), .y(y), .frame(frame),
+                       .sub(ld1d_sub), .rgb(ld1d_rgb));
 
     // ---- mux by stable pattern ID ----
     logic [3*COLOR_W-1:0] pix;
     always_comb begin
-        unique case (pattern_sel)
+        unique case (pattern_sel_s1)
             PATSEL_W'(`PAT_WHITE):       pix = {CH_HI, CH_HI, CH_HI};
             PATSEL_W'(`PAT_RED):         pix = {CH_HI, CH_LO, CH_LO};
             PATSEL_W'(`PAT_GREEN):       pix = {CH_LO, CH_HI, CH_LO};
@@ -158,17 +188,17 @@ module pattern_pixel_core #(
             default:                     pix = {CH_LO, CH_LO, CH_LO}; // PAT_BLACK + disabled IDs
         endcase
         // Blanking pixels are black (FR-SB-3); disabled core is black.
-        if (!pat_en || !de) pix = '0;
+        if (!pat_en_s1 || !de_s1) pix = '0;
     end
 
-    // Registered output -> PATTERN_LATENCY = 1.
+    // Registered output -> PATTERN_LATENCY = 2.
     always_ff @(posedge clk) begin
         if (rst) begin
             rgb         <= '0;
             de_mask_out <= '0;
         end else begin
             rgb         <= pix;
-            de_mask_out <= de_mask;
+            de_mask_out <= de_mask_s1;
         end
     end
 

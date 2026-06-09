@@ -173,6 +173,9 @@ panels above the ~325 MHz ELVDS cliff (they build for a future board but won't
 display cleanly here). Timings are transcribed from
 [docs/video-timings.md](docs/video-timings.md).
 
+> Adding a panel, a generic resolution, or a whole new FPGA/board?
+> See the **[porting & custom-timing guide](docs/porting.md)**.
+
 ### Timing & resource report
 
 Every build prints a timing + resource summary (and saves it to

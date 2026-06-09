@@ -124,6 +124,8 @@ not Tang-Nano-buildable — need a faster board): `1920x720`/40-LED, `2560x1440`
 
 ## Pointers
 
+- **Porting / add a custom timing or board:** [docs/porting.md](docs/porting.md)
+  (add a panel = one row in `displays.conf`; new board = swap PLL/serializer/PHY/flow).
 - Design spec: [docs/pattern-generator-rtl-prd.md](docs/pattern-generator-rtl-prd.md)
 - Board details/experiments: [boards/tangnano9k/README.md](boards/tangnano9k/README.md)
 - Coding standards: [docs/coding-standards.md](docs/coding-standards.md) ·

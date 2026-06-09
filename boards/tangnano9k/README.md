@@ -62,33 +62,41 @@ the board reverts to the Sipeed factory demo). To make it stick, flash it (below
 
 ## Persistent flash & factory backup
 
-`openFPGALoader` defaults to volatile **SRAM** (`-m`); use **`-f`** to write the
-on-board SPI flash so the bitstream survives a power-cycle. **Back up the Sipeed
-factory image first** so you can always restore it.
+`openFPGALoader` defaults to volatile **SRAM** (`-m`, lost on power-cycle); use
+**`-f`** to write the on-board SPI flash so the bitstream survives a power-cycle:
 
 ```bash
-# 0. inspect (read-only) — prints the FPGA + the connected SPI flash (model/size)
-openFPGALoader -b tangnano9k --detect -f
-
-# 1. BACK UP the factory image FIRST. Use the flash size from step 0; ~4 MB safely
-#    covers the factory bitstream (it lives at offset 0; trailing 0xFF is unused).
-openFPGALoader -b tangnano9k --dump-flash --file-size 4194304 sipeed_factory_backup.bin
-ls -l sipeed_factory_backup.bin && xxd sipeed_factory_backup.bin | head   # must NOT be all-ff/00
-
-# 2. write OUR bitstream to flash (persistent) and verify it
 openFPGALoader -b tangnano9k -f --verify boards/tangnano9k/build/top_tangnano9k.fs
+```
 
-# 3. restore the factory image later (raw .bin written back to offset 0)
-openFPGALoader -b tangnano9k -f -o 0 sipeed_factory_backup.bin
+**Restoring the Sipeed factory demo — just re-download it.** The shipped "Pico SoC"
+image is a *stock* Sipeed demo, not unique to your board, so there's no need to
+back it up. If you ever want factory behaviour back, grab the default example from
+[sipeed/TangNano-9K-example](https://github.com/sipeed/TangNano-9K-example) and
+`openFPGALoader -b tangnano9k -f <that>.fs`.
+
+> **Don't dump the flash to "back it up".** Flash *read-back* on the 9K goes through
+> the on-board BL702 USB-JTAG bridge one USB transaction at a time (~tens of B/s),
+> so a full 4 MB dump takes **~a day** (≈0.35 %/5 min). The `-f` *write* path is
+> batched and fast (~a minute); only the read is pathologically slow.
+
+If you really want your own dump, the factory bitstream sits at offset 0 and is far
+smaller than the flash, so dump a small region (time scales with size):
+
+```bash
+openFPGALoader -b tangnano9k --detect -f                                 # FPGA + flash model/size (read-only)
+openFPGALoader -b tangnano9k --dump-flash --file-size 524288 backup.bin  # 512 KB, ≈ a few hours
+openFPGALoader -b tangnano9k -f -o 0 backup.bin                          # restore: raw .bin back to offset 0
 ```
 
 - **Iterate on SRAM, flash only when ready** — SRAM (the default
   `openFPGALoader -b tangnano9k <file>.fs`) is instant and unlimited; flash has
-  finite write cycles. Use `-f` for the "make it stick" step, not every test build.
-- `-o` is the flash **offset**, not an output file — the dump's output is the
-  positional filename (`sipeed_factory_backup.bin`).
-- If `-f` complains about flash selection on this part, add `--external-flash`
-  (the 9K stores its config in the on-board SPI flash); plain `-f` is the normal path.
+  finite write cycles. When you `-f` a bitstream, openFPGALoader prints the bytes
+  written — that's the smallest `--file-size` that fully covers one.
+- `-o` is the flash **offset**, not an output file (the dump output is the
+  positional filename). Add `--external-flash` if `-f` complains about selection.
+- For genuinely fast flash I/O, use an external **FT2232 JTAG probe** instead of
+  the on-board BL702.
 
 ## Notes / decisions
 

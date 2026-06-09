@@ -57,6 +57,39 @@ patterns; **S1** resets. 480p is confirmed working on hardware; 720p meets timin
 3-stage pipeline (latency 3). Note: fabric timing closing is necessary but not
 sufficient at 720p; the emulated-LVDS link itself is the real limiter.
 
+The `openFPGALoader` line above loads **SRAM** (volatile — lost on power-cycle, so
+the board reverts to the Sipeed factory demo). To make it stick, flash it (below).
+
+## Persistent flash & factory backup
+
+`openFPGALoader` defaults to volatile **SRAM** (`-m`); use **`-f`** to write the
+on-board SPI flash so the bitstream survives a power-cycle. **Back up the Sipeed
+factory image first** so you can always restore it.
+
+```bash
+# 0. inspect (read-only) — prints the FPGA + the connected SPI flash (model/size)
+openFPGALoader -b tangnano9k --detect -f
+
+# 1. BACK UP the factory image FIRST. Use the flash size from step 0; ~4 MB safely
+#    covers the factory bitstream (it lives at offset 0; trailing 0xFF is unused).
+openFPGALoader -b tangnano9k --dump-flash --file-size 4194304 sipeed_factory_backup.bin
+ls -l sipeed_factory_backup.bin && xxd sipeed_factory_backup.bin | head   # must NOT be all-ff/00
+
+# 2. write OUR bitstream to flash (persistent) and verify it
+openFPGALoader -b tangnano9k -f --verify boards/tangnano9k/build/top_tangnano9k.fs
+
+# 3. restore the factory image later (raw .bin written back to offset 0)
+openFPGALoader -b tangnano9k -f -o 0 sipeed_factory_backup.bin
+```
+
+- **Iterate on SRAM, flash only when ready** — SRAM (the default
+  `openFPGALoader -b tangnano9k <file>.fs`) is instant and unlimited; flash has
+  finite write cycles. Use `-f` for the "make it stick" step, not every test build.
+- `-o` is the flash **offset**, not an output file — the dump's output is the
+  positional filename (`sipeed_factory_backup.bin`).
+- If `-f` complains about flash selection on this part, add `--external-flash`
+  (the 9K stores its config in the on-board SPI flash); plain `-f` is the normal path.
+
 ## Notes / decisions
 
 - **CLKDIV needs himbaechel.** Classic nextpnr-gowin 0.6 has no CLKDIV BEL

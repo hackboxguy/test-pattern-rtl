@@ -118,8 +118,7 @@ module pattern_pixel_core #(
     pat_localdim_1d #(.COLOR_W(COLOR_W), .HCOORD_W(HCOORD_W), .VCOORD_W(VCOORD_W),
                       .FRAME_W(FRAME_W), .H_ACTIVE(H_ACTIVE), .V_ACTIVE(V_ACTIVE),
                       .ZONES(LD1D_ZONES))
-        u_localdim_1d (.x(x0), .y(y), .frame(frame),
-                       .norm_x(ramph_rgb[COLOR_W-1:0]), .sub(ld1d_sub), .rgb(ld1d_rgb));
+        u_localdim_1d (.x(x0), .y(y), .frame(frame), .sub(ld1d_sub), .rgb(ld1d_rgb));
 
     // ---- mux by stable pattern ID ----
     logic [3*COLOR_W-1:0] pix;

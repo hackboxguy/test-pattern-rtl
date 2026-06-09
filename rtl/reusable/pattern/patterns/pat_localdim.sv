@@ -62,7 +62,9 @@ module pat_localdim #(
     assign mwin = (x >= mwx0) && (x < mwx0 + HCOORD_W'(WW)) &&
                   (y >= VCOORD_W'(WY0)) && (y < VCOORD_W'(WY0 + WH));
 
-    // ---- coarse 8x8 zone checkerboard (top 3 bits of the normalized coords) ----
+    // ---- coarse 8x8 zone checkerboard ----
+    // bit [COLOR_W-3] of a normalized coord toggles every 1/8 of the span (it is the
+    // LSB of the top-3-bit band index 0..7), so its x==y equality is an 8x8 checker.
     logic zone_chk;
     assign zone_chk = (norm_x[COLOR_W-3] == norm_y[COLOR_W-3]);
 

@@ -1,5 +1,6 @@
-# Verilator/tooling file list for the portable RTL (run from repo root).
-# Used by sim/synth flows. (run_lint.sh discovers files directly.)
+# Convenience file list for the portable RTL (run from repo root). NOTE: the
+# actual gates discover/list files themselves (run_lint.sh + yosys_smoke.sh via
+# `find`, run_sim.sh via its own RTL list); this file is a reference only.
 +incdir+rtl/reusable/pattern
 +incdir+rtl/reusable/video
 
@@ -9,6 +10,8 @@ rtl/reusable/pattern/patterns/pat_color_bars.sv
 rtl/reusable/pattern/patterns/pat_ramp.sv
 rtl/reusable/pattern/patterns/pat_checker.sv
 rtl/reusable/pattern/patterns/pat_grid.sv
+rtl/reusable/pattern/patterns/pat_localdim.sv
+rtl/reusable/pattern/patterns/pat_localdim_1d.sv
 
 # Tier 1/2 — video
 rtl/reusable/video/video_timing_gen.sv

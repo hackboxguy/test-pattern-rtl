@@ -4,9 +4,10 @@
 // For displays whose backlight is a 1D bar of independently-controlled LEDs along
 // the bottom (or top) edge -> the dimming zones are VERTICAL COLUMNS across the
 // screen width (Codex PRD review v4). `ZONES` columns span H_ACTIVE; the zone
-// index of a pixel is derived from the ramp's normalized x (norm_x) with one
-// small constant multiply -- no runtime divide, no per-zone ROM, no framebuffer.
-// ZONES is a parameter (= the panel's LED count, e.g. 40 / 47 / 48).
+// index of a pixel is floor(x*ZONES/H_ACTIVE), computed with ONE constant multiply
+// by a fixed-point reciprocal -> sub-pixel-exact zone boundaries (no runtime
+// divide, no per-zone ROM, no framebuffer). The smooth sweep uses a second small
+// constant multiply (frame*STRX). ZONES = the panel's LED count (e.g. 40/47/48).
 //
 //   sub : 0 COLUMN    one centre-zone full-height column        (zone mapping)
 //         1 SWEEP     one-zone column sweeping left->right       (zone tracking)
@@ -28,20 +29,29 @@ module pat_localdim_1d #(
     input  logic [HCOORD_W-1:0]  x,
     input  logic [VCOORD_W-1:0]  y,
     input  logic [FRAME_W-1:0]   frame,
-    input  logic [COLOR_W-1:0]   norm_x,  // x mapped to [0,2^COLOR_W) — reuses ramp_h
     input  logic [2:0]           sub,
     output logic [3*COLOR_W-1:0] rgb
 );
+    if (ZONES < 1) begin : g_bad_zones
+        $error("pat_localdim_1d: ZONES must be >= 1");
+    end
+
     localparam logic [3*COLOR_W-1:0] WHITE = '1;
     localparam logic [3*COLOR_W-1:0] BLACK = '0;
-    localparam int ZW = $clog2(ZONES + 1);   // bits to hold a zone value/index (0..ZONES)
 
-    // ---- per-pixel zone index: floor(norm_x * ZONES / 2^COLOR_W), clamped ----
-    logic [COLOR_W+ZW-1:0] zi_prod;
-    logic [ZW-1:0]         zi_q, zone_idx;
-    assign zi_prod  = norm_x * (COLOR_W+ZW)'(ZONES);
-    assign zi_q     = zi_prod[COLOR_W+ZW-1:COLOR_W];
-    assign zone_idx = (zi_q >= ZW'(ZONES)) ? ZW'(ZONES-1) : zi_q;
+    // ---- per-pixel zone index = floor(x * ZONES / H_ACTIVE), via a fixed-point
+    //      reciprocal: one constant multiply, sub-pixel-exact boundaries. ----
+    localparam int ZFRAC    = 12;
+    localparam int INV_ZONE = (ZONES * (1 << ZFRAC) + (H_ACTIVE / 2)) / H_ACTIVE; // round(ZONES*2^ZFRAC/H)
+    localparam int IZW      = $clog2(INV_ZONE + 1);
+    localparam int PW       = HCOORD_W + IZW;
+    localparam int ZW       = $clog2(ZONES + 1);   // bits to hold 0..ZONES
+    logic [PW-1:0]       zi_prod;
+    logic [PW-ZFRAC-1:0] zi_q;
+    logic [ZW-1:0]       zone_idx;
+    assign zi_prod  = x * IZW'(INV_ZONE);
+    assign zi_q     = zi_prod[PW-1:ZFRAC];
+    assign zone_idx = (zi_q >= (PW-ZFRAC)'(ZONES)) ? ZW'(ZONES-1) : zi_q[ZW-1:0];
 
     localparam int ZC  = ZONES / 2;        // centre zone
     localparam int ZQ1 = ZONES / 4;        // quarter / three-quarter zones (dual)
@@ -105,5 +115,5 @@ module pat_localdim_1d #(
 
     // unused for lint: high frame bits, and the fractional (low) product bits.
     logic _unused;
-    assign _unused = &{1'b0, frame[FRAME_W-1:8], zi_prod[COLOR_W-1:0], sprod[7:0]};
+    assign _unused = &{1'b0, frame[FRAME_W-1:8], zi_prod[ZFRAC-1:0], sprod[7:0]};
 endmodule

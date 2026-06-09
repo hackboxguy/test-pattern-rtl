@@ -66,7 +66,7 @@ case "$RES" in
   480p)     DEFINES="";                 PIXFREQ=25.2 ;;
   800x600)  DEFINES="-DBUILD_800X600";  PIXFREQ=40 ;;
   1024x768) DEFINES="-DBUILD_1024X768"; PIXFREQ=65 ;;
-  720rb)    DEFINES="-DBUILD_720P_RB";  PIXFREQ=64 ;;
+  720rb)    DEFINES="-DBUILD_720P_RB";  PIXFREQ=64.8 ;;   # matches the top's PLL (324/5)
   720p)     DEFINES="-DBUILD_720P";     PIXFREQ=74.25 ;;
   1920x720) DEFINES="-DBUILD_1920X720"; PIXFREQ=91.8; EXPERIMENTAL=1 ;;  # exceeds the board PHY
   1080p)    DEFINES="-DBUILD_1080P";    PIXFREQ=148.5 ;;
@@ -81,15 +81,29 @@ if [ -n "$PANEL" ]; then
   CONF="boards/tangnano9k/displays.conf"
   row=$(awk -v n="$PANEL" '$1==n {print; exit}' "$CONF")
   [ -z "$row" ] && { echo "ERROR: PANEL '$PANEL' not in $CONF (have: $(awk '!/^#/&&NF{printf "%s ",$1}' "$CONF"))"; exit 1; }
-  read -r _n HACT HFP HSY HBP VACT VFP VSY VBP HPOL VPOL PIXMHZ PZONES <<< "$row"
+  read -r _n HACT HFP HSY HBP VACT VFP VSY VBP HPOL VPOL PIXMHZ PZONES extra <<< "$row"
+  # validate the row: exactly 13 fields, all numeric, sane ranges (#9)
+  { [ -n "$PZONES" ] && [ -z "$extra" ]; } || { echo "ERROR: PANEL '$PANEL' row must have 13 fields (name + 12)"; exit 1; }
+  for v in "$HACT" "$HFP" "$HSY" "$HBP" "$VACT" "$VFP" "$VSY" "$VBP" "$HPOL" "$VPOL" "$PIXMHZ" "$PZONES"; do
+    case "$v" in ''|*[!0-9.]*) echo "ERROR: PANEL '$PANEL' field '$v' missing or non-numeric"; exit 1;; esac
+  done
+  { [ "$PZONES" -ge 1 ]; } 2>/dev/null || { echo "ERROR: PANEL '$PANEL' ZONES must be >= 1 (got '$PZONES')"; exit 1; }
+  { [ "$HACT" -le 4096 ] && [ "$VACT" -le 4096 ]; } || { echo "ERROR: PANEL '$PANEL' active ${HACT}x${VACT} exceeds 12-bit coords (raise HCOORD_W/VCOORD_W)"; exit 1; }
+  HTOT=$((HACT+HFP+HSY+HBP)); VTOT=$((VACT+VFP+VSY+VBP))
+  FRATE=$(awk "BEGIN{printf \"%.2f\", $PIXMHZ*1e6/($HTOT*$VTOT)}")
+  # solve the rPLL from the serial clock, derive the ACTUAL pixel clock (#1/#2)
   SER=$(awk "BEGIN{printf \"%.2f\", $PIXMHZ*5}")
   sol=$(pll_solve "$SER")
   [ "$sol" = "FAIL" ] && { echo "ERROR: PANEL '$PANEL' needs ${SER} MHz serial > rPLL 600 MHz max -- needs a faster board."; exit 1; }
   read -r PIDIV PFBDIV PODIV PCLK <<< "$sol"
+  APIX=$(awk "BEGIN{printf \"%.3f\", $PCLK/5}")
+  PPM=$(awk "BEGIN{printf \"%+d\", ($PCLK/$SER-1)*1e6}")
   DEFINES="-DPANEL_OVERRIDE -DVM_H_ACTIVE=$HACT -DVM_H_FP=$HFP -DVM_H_SYNC=$HSY -DVM_H_BP=$HBP -DVM_V_ACTIVE=$VACT -DVM_V_FP=$VFP -DVM_V_SYNC=$VSY -DVM_V_BP=$VBP -DVM_HPOL=$HPOL -DVM_VPOL=$VPOL -DVM_PLL_IDIV=$PIDIV -DVM_PLL_FBDIV=$PFBDIV -DVM_PLL_ODIV=$PODIV"
-  PIXFREQ="$PIXMHZ"; LABEL="PANEL=$PANEL"; ZONES="${ZONES:-$PZONES}"
+  PIXFREQ="$APIX"; LABEL="PANEL=$PANEL"; ZONES="${ZONES:-$PZONES}"
   awk "BEGIN{exit !($SER > 330)}" && EXPERIMENTAL=1   # over the ~325 MHz ELVDS cliff
-  echo "PANEL ${PANEL}: ${HACT}x${VACT}  pixel ${PIXMHZ} MHz / serial ${SER} MHz  -> rPLL IDIV=$PIDIV FBDIV=$PFBDIV ODIV=$PODIV (CLKOUT ${PCLK})"
+  echo "PANEL ${PANEL}: ${HACT}x${VACT}  total ${HTOT}x${VTOT} @ ${FRATE} Hz  zones=${ZONES}"
+  echo "  requested pixel ${PIXMHZ} / serial ${SER} MHz  ->  rPLL IDIV=$PIDIV FBDIV=$PFBDIV ODIV=$PODIV"
+  echo "  solved CLKOUT ${PCLK} MHz  (actual pixel ${APIX} MHz, ${PPM} ppm vs requested)"
 fi
 
 EXPERIMENTAL="${EXPERIMENTAL:-0}"
@@ -102,8 +116,11 @@ EXPERIMENTAL="${EXPERIMENTAL:-0}"
 [ "${SERIALIZE_CLK:-0}" = "1" ] && DEFINES="${DEFINES} -DSERIALIZE_TMDS_CLK"
 [ "${CLK_ALT:-0}" = "1" ]       && DEFINES="${DEFINES} -DTMDS_CLK_ALT"
 # 1D local-dimming LED/zone count (match your panel's LED bar, e.g. ZONES=40).
-[ -n "${ZONES:-}" ]             && DEFINES="${DEFINES} -DLD1D_ZONES=${ZONES}"
-echo "Resolution: ${RES}  (pixel_clk target ${PIXFREQ} MHz)   DEFINES='${DEFINES}'"
+if [ -n "${ZONES:-}" ]; then
+  { [ "${ZONES}" -ge 1 ]; } 2>/dev/null || { echo "ERROR: ZONES must be a positive integer (got '${ZONES}')"; exit 1; }
+  DEFINES="${DEFINES} -DLD1D_ZONES=${ZONES}"
+fi
+echo "Target: ${LABEL}  (pixel_clk ${PIXFREQ} MHz)   DEFINES='${DEFINES}'"
 
 SRC=(
   rtl/reusable/pattern/patterns/pat_color_bars.sv
@@ -151,13 +168,22 @@ nextpnr-himbaechel --timing-allow-fail ${SEED_ARG} --freq "${PIXFREQ}" \
   --vopt family="${FAMILY}" \
   --vopt cst=boards/tangnano9k/hdmi.cst 2>&1 | tee "${OUT}/pnr.log"
 
-# Serial-clock dedicated-route quality: at 720p, serial_clk (371 MHz) feeds both
-# the OSER10 FCLK and CLKDIV. A non-dedicated route here is a strong predictor of
-# marginal/garbled 720p output -- fail the build so we don't flash it.
+# Serial-clock dedicated-route quality: serial_clk feeds the OSER10 FCLK + CLKDIV.
+# A non-dedicated route predicts a marginal/garbled clock (slow/unreliable lock).
+# Gate by the actual SERIAL RATE, not the RES name (#3): low rate -> warn+pack;
+# clean-rate modes -> fail (reseed); EXPERIMENTAL/over-cliff -> warn+pack.
+# STRICT_CLOCK_ROUTE=1 forces a fail for hardware-validation builds.
+SERRATE=$(awk "BEGIN{printf \"%.0f\", ${PIXFREQ}*5}")
 if grep -q "Failed to route net 'serial_clk'" "${OUT}/pnr.log"; then
-  echo "TIMING/CLOCK FAIL: serial_clk did not get dedicated routing (marginal clock ->"
-  echo "                   slow/unreliable monitor lock). Re-run with NEXTPNR_SEED=<n>."
-  case "$RES" in 800x600|1024x768|720rb|720p|1080p) exit 1 ;; esac
+  if [ "${EXPERIMENTAL}" = "1" ]; then
+    echo "CLOCK WARN: serial_clk not on dedicated routing (${SERRATE} MHz, EXPERIMENTAL ${LABEL}) -- packing."
+  elif [ "${STRICT_CLOCK_ROUTE:-0}" = "1" ] || awk "BEGIN{exit !(${SERRATE} >= 150)}"; then
+    echo "CLOCK FAIL: serial_clk not on dedicated routing at ${SERRATE} MHz (${LABEL}) -- marginal clock."
+    echo "           Re-run with a different NEXTPNR_SEED."
+    exit 1
+  else
+    echo "CLOCK WARN: serial_clk not on dedicated routing at ${SERRATE} MHz (${LABEL}) -- low rate, packing."
+  fi
 fi
 
 # Post-build timing gate: worst reported pixel_clk Fmax must clear the pixel clock.
@@ -179,12 +205,12 @@ gowin_pack -d "${FAMILY}" -o "${OUT}/${TOP}.fs" "${OUT}/${TOP}_pnr.json"
 #      re-view any time with `./boards/tangnano9k/flow/build.sh report` (or make report).
 SERIALCLK=$(awk "BEGIN{printf \"%.1f\", ${PIXFREQ}*5}")
 {
-  echo "================= Tang Nano 9K build report (RES=${RES}) ================="
+  echo "================= Tang Nano 9K build report (${LABEL}) ================="
   echo "  pixel clock : ${PIXFREQ} MHz      TMDS serial (bit) clock : ${SERIALCLK} MHz"
   echo "  defines     : ${DEFINES:-(none)}      P&R seed : ${NEXTPNR_SEED}"
   if [ -n "${fmax:-}" ]; then
-    MARGIN=$(awk "BEGIN{printf \"%.0f\", (${fmax}/${PIXFREQ}-1)*100}")
-    echo "  timing      : pixel_clk Fmax ${fmax} MHz  (target ${PIXFREQ} MHz, +${MARGIN}% margin)"
+    MARGIN=$(awk "BEGIN{printf \"%+.0f\", (${fmax}/${PIXFREQ}-1)*100}")
+    echo "  timing      : pixel_clk Fmax ${fmax} MHz  (target ${PIXFREQ} MHz, ${MARGIN}% margin)"
   fi
   if grep -qi "Failed to route net 'serial_clk'" "${OUT}/pnr.log"; then
     echo "  clock route : serial_clk NON-dedicated (marginal — try another NEXTPNR_SEED)"

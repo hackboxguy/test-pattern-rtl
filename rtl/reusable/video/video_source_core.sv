@@ -55,6 +55,15 @@ module video_source_core #(
 );
     localparam int PAT_LAT = 1;  // MUST match pattern_pixel_core PATTERN_LATENCY
 
+    // The output active coordinates x0/y must fit their width (FR-CORE-6); a very
+    // wide/tall panel needs HCOORD_W/VCOORD_W widened (e.g. 27" 4032-wide needs 13).
+    if (H_ACTIVE > (1 << HCOORD_W)) begin : g_hcoord_guard
+        $error("video_source_core: H_ACTIVE exceeds 2^HCOORD_W -- widen HCOORD_W");
+    end
+    if (V_ACTIVE > (1 << VCOORD_W)) begin : g_vcoord_guard
+        $error("video_source_core: V_ACTIVE exceeds 2^VCOORD_W -- widen VCOORD_W");
+    end
+
     // --- timing generator ---
     logic                de_v, hsync_v, vsync_v, sof_v, eol_v;
     logic [HCOORD_W-1:0] x0_v;

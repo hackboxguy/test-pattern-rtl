@@ -96,12 +96,15 @@ local-dimming** (`pat_localdim_1d`): zone column · sweep · y-window · alt-zon
 h-band · subtitle · flash · dual-highlight. Power-on = color_bars; **S2** cycles,
 **S1** resets.
 
-Both local-dimming families are sub-selected primitives reusing the ramp's
-normalized coords + the frame counter — **zero extra multipliers**. The 1D family
-(for bottom-edge LED-bar panels = vertical column zones) is parameterized by
-**`LD1D_ZONES`** (LED count; `ZONES=<n>` build option, default 48); the per-pixel
-zone index = `floor(norm_x*ZONES/2^COLOR_W)`. Target panels (`video_modes.svh`,
-not Tang-Nano-buildable — need a faster board): `1920x720`/40-LED, `2560x1440`/47-LED.
+Both families are sub-selected primitives (cheap coordinate comparators + the frame
+counter). The 2D family reuses the ramp's normalized coords (no extra multiplies);
+the 1D family (for bottom-edge LED-bar panels = vertical column zones) uses **two
+small constant multiplies** — zone index `floor(x*ZONES/H_ACTIVE)` via a fixed-point
+reciprocal (sub-pixel-exact boundaries) + `frame*STRX` for the smooth sweep. So
+builds infer 1–2 DSPs depending on mode constants. It's parameterized by
+**`LD1D_ZONES`** (LED count; `ZONES=<n>` build option, default 48; `PANEL=` sets it
+from the table). Target panels (`video_modes.svh`, not Tang-Nano-buildable — need a
+faster board): `1920x720`/40-LED, `2560x1440`/47-LED.
 
 ## What's next (roadmap)
 

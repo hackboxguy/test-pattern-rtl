@@ -34,8 +34,10 @@ Two layers carry timing into a build:
    # name   HACT HFP HSY HBP  VACT VFP VSY VBP  HPOL VPOL  PIXMHZ  ZONES
    my-panel 1920 50  50  54   720  21  2   18   0    0     94.52   40
    ```
-   `PIXMHZ` = pixel clock; `ZONES` = LED count (0 if not a 1D-dimming panel);
-   `HPOL/VPOL` = sync polarity (0 = negative).
+   `PIXMHZ` = pixel clock; `ZONES` = LED count (must be ≥ 1 — leave at 48 if the
+   panel isn't 1D-dimming; the 1D patterns are then preview-only); `HPOL/VPOL` =
+   sync polarity (0 = negative). The build validates the row (field count, numeric,
+   ranges) before use.
 2. Build: `PANEL=my-panel ./boards/tangnano9k/flow/build.sh`. The build emits the
    timing defines, sets `ZONES`/`PIXFREQ`, and **solves** the rPLL dividers from
    `PIXMHZ`. No RTL edits. (`PANEL` overrides `RES`; without it, `RES=`/`ZONES=`
@@ -102,6 +104,8 @@ Reused unchanged: `rtl/reusable/**`, `boards/common/dvi_tmds_encoder.sv`,
 1. **rPLL CLKOUT ≤ 600 MHz** ⇒ serial = pixel×5 ≤ 600 ⇒ **pixel ≤ ~120 MHz**.
 2. **Fabric Fmax** (encoder critical path, ~86–112 MHz) ≥ pixel clock.
 3. **ELVDS clean ceiling** ≈ **325 MHz serial** (≈ 65 MHz pixel). Above → artifacts.
-4. **12-bit coordinates** ⇒ H_total and V_total ≤ 4095. The 27″ panel (H_total 4248)
-   exceeds this — bump `HCOORD_W`/`VCOORD_W` to 13 (a `video_source_core` parameter)
-   for very wide modes.
+4. **Active coordinate width** ⇒ `H_ACTIVE ≤ 2^HCOORD_W` and `V_ACTIVE ≤ 2^VCOORD_W`
+   (the VTG sizes its internal h/v counters from the *totals* automatically, so only
+   the active range must fit the output `x0`/`y`). 12-bit covers all seven panels
+   (max active 4032 < 4096); `video_source_core` now `$error`s if a build exceeds it.
+   The board top's `x0`/`y` wires must match `HCOORD_W`/`VCOORD_W`.

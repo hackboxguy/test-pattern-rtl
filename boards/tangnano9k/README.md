@@ -20,7 +20,7 @@ source <path-to>/oss-cad-suite/environment
 
 ## Build status
 
-All 24 patterns are clean on real HDMI up to **1024×768p60 (XGA)**. The
+All 32 patterns are clean on real HDMI up to **1024×768p60 (XGA)**. The
 clean/artifact boundary is the emulated-LVDS **serial bit rate**:
 
 | Mode | serial | Hardware result |
@@ -37,7 +37,7 @@ PHY past its rate margin** (R=G=B is emitted; the lines are physical, at value
 transitions — not a logic bug). The same resolution-independent core runs clean
 at higher rates on a board with true-LVDS / a faster serializer. Note the modes
 above are 4:3; for native 16:9 try `RES=720rb` (720p reduced-blanking at
-~319 MHz, below the cliff, if the sink accepts CVT-RB timing).
+~324 MHz; same rate/PLL as XGA but still artifacts — see the ladder below).
 
 > History: an earlier nextpnr-gowin 0.6 build packed a bitstream but showed a
 > blank screen — root-caused to the missing CLKDIV (see toolchain note above).
@@ -117,10 +117,11 @@ openFPGALoader -b tangnano9k -f -o 0 backup.bin                          # resto
 
 ## Resolution / bring-up ladder
 
-Default 640x480p60. To go higher, set the `VMODE_*` macro in
-`top_tangnano9k.sv` **and** the rPLL dividers in `gowin_tmds_clkgen.sv`:
+Default 640x480p60. Select another mode with `RES=<name>` (the build sets the
+`VMODE_*` macro + the matching rPLL dividers), or a named panel with `PANEL=<name>`
+([displays.conf](displays.conf) + solved PLL — see the [porting guide](../../docs/porting.md)):
 
-Build with `RES=480p|800x600|1024x768|720rb|720p|1080p ./boards/tangnano9k/flow/build.sh`.
+Build with `RES=480p|800x600|1024x768|720rb|1920x720|720p|1080p ./boards/tangnano9k/flow/build.sh`.
 
 The clean/marginal boundary is the emulated-LVDS **serial bit rate**, not the
 fabric: ~200 MHz is clean, ~371 MHz is not.

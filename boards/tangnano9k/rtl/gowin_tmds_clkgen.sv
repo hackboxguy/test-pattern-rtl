@@ -9,10 +9,14 @@
 //
 // rPLL: fCLKOUT = 27MHz*(FBDIV_SEL+1)/(IDIV_SEL+1);  fVCO = fCLKOUT*ODIV_SEL.
 //
-//   mode         pixel/serial    IDIV FBDIV ODIV  VCO    status
-//   640x480p60   25.2/126.0 MHz   2    13    4    504   default (apicula PLL480)
-//   1280x720p60  74.25/371.25     3    54    2    742   720p (must-pass)
-//   1920x1080p60 148.5/742.5      —    —     —    —     out of VCO range (PRD risk)
+// Dividers are passed in by the board top (selected per RES=/PANEL= in build.sh),
+// not fixed here. Reference points (serial = 5 x pixel):
+//   mode          pixel/serial      IDIV FBDIV ODIV  status
+//   640x480p60    25.2 /126.0 MHz    2    13    4    clean
+//   800x600p60    ~40  /~200 MHz     4    36    4    clean
+//   1024x768p60   ~65  /~325 MHz     0    11    2    clean (highest confirmed)
+//   1280x720p60   74.25/371.25 MHz   3    54    2    above ELVDS cliff (artifacts)
+//   1920x1080p60  148.5/742.5 MHz    —    —     —    not buildable (>600 MHz CLKOUT)
 module gowin_tmds_clkgen #(
     parameter IDIV_SEL  = 2,
     parameter FBDIV_SEL = 13,

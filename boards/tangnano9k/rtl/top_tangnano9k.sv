@@ -3,15 +3,14 @@
 //
 // Board top: 27 MHz -> Gowin rPLL/CLKDIV -> video_source_core (test patterns)
 // -> 3x DVI TMDS encoders -> Gowin OSER10 serializers -> ELVDS HDMI.
-// Resolution is build-selected: default 640x480p60, -DBUILD_720P, -DBUILD_1080P
-// (1080p not buildable on this board -- see README).
-// The TMDS clock channel carries the pixel clock directly (apicula DVI topology).
-// Button S2 cycles patterns; S1 resets.
+// Resolution/timing is build-selected by flow/build.sh: RES=<mode> sets the VMODE
+// macro + matching rPLL dividers below; PANEL=<name> overrides both from
+// displays.conf via -DPANEL_OVERRIDE (timings + solved PLL). 1080p not buildable
+// here (rPLL 600 MHz cap); see README. TMDS clock = forwarded pixel clock by
+// default (apicula DVI topology). Button S2 cycles the 32 patterns; S1 resets.
 //
-// Validated through the open Gowin flow (synth_gowin + nextpnr-gowin + gowin_pack
-// -> bitstream). The portable cores are also simulation-verified. Default is
-// 640x480p60 (first light-up); for 720p change the VMODE macro AND the
-// gowin_tmds_clkgen dividers (see that file + the board README).
+// Validated through the open Gowin flow (synth_gowin + nextpnr-himbaechel +
+// gowin_pack -> bitstream); the portable cores are also simulation-verified.
 //
 // DVI channel map: ch0=Blue(+ {vsync,hsync} control), ch1=Green, ch2=Red.
 `include "video_modes.svh"
@@ -62,7 +61,7 @@ module top_tangnano9k (
     reset_sync #(.STAGES(3)) u_rst (.clk(pixel_clk), .arst_n(resetn & pll_lock), .srst(rst_pix));
 
     // ---- pattern select via S2 (power-on = color bars) ----
-    logic [4:0] pattern_sel;   // 5 bits: PAT_COUNT (18) patterns
+    logic [4:0] pattern_sel;   // 5 bits: PAT_COUNT (32) patterns
     gpio_button_ctrl #(.PATSEL_W(5), .N_PATTERNS(`PAT_COUNT), .RESET_SEL(`PAT_COLOR_BARS),
                        .ACTIVE_LOW(1'b1)) u_btn (
         .clk(pixel_clk), .rst(rst_pix), .btn(key), .pattern_sel(pattern_sel)

@@ -6,11 +6,13 @@
 // screen width (Codex PRD review v4). `ZONES` columns span H_ACTIVE; the zone
 // index of a pixel is floor(x*ZONES/H_ACTIVE), computed with ONE constant multiply
 // by a fixed-point reciprocal -> sub-pixel-exact zone boundaries (no runtime
-// divide, no per-zone ROM, no framebuffer). The smooth sweep uses a second small
-// constant multiply (frame*STRX). ZONES = the panel's LED count (e.g. 40/47/48).
+// divide, no per-zone ROM, no framebuffer). The sweep uses a timing-safe
+// frame-scaled zone index, so the active column advances one physical backlight
+// zone at a time. With 47 zones the pass is 256 frames (~4.3 s at 59.58 Hz).
+// ZONES = the panel's LED count (e.g. 40/47/48).
 //
 //   sub : 0 COLUMN    one centre-zone full-height column        (zone mapping)
-//         1 SWEEP     one-zone column sweeping left->right       (zone tracking)
+//         1 SWEEP     one-zone column sweeping L->R by zone      (zone tracking)
 //         2 YWIN      top/mid/bottom windows in the centre zone  (light-guide reach)
 //         3 ALTZONES  even zones white / odd black              (zone separation)
 //         4 HBAND     full-width top/mid/bottom bands           (vertical uniformity)
@@ -60,31 +62,29 @@ module pat_localdim_1d #(
     localparam int ZQ1 = ZONES / 4;        // quarter / three-quarter zones (dual)
     localparam int ZQ3 = (3 * ZONES) / 4;
 
-    // ---- smooth sweep: a one-zone-wide column glides L->R by pixels and wraps
-    //      (scol = floor(frame[7:0]*STRX/256) — ~one zone-width every few frames). ----
-    localparam int COLW = (H_ACTIVE / ZONES < 1) ? 1 : H_ACTIVE / ZONES;  // one zone wide
-    localparam int STRX = (H_ACTIVE - COLW < 1) ? 1 : H_ACTIVE - COLW;    // travel span
-    logic [8+HCOORD_W-1:0] sprod;
-    logic [HCOORD_W-1:0]   scol;
+    // ---- zone sweep: a one-zone-wide column advances L->R and wraps. ----
+    localparam int SWPRODW = 8 + ZW;
+    logic [SWPRODW-1:0] zprod;
+    logic [ZW-1:0]      sweep_zone;
     logic [HCOORD_W-1:0]   x_q;
     logic [VCOORD_W-1:0]   y_q;
     logic [2:0]            sub_q;
     logic                  flash_q;
     logic                  sweep_on;
-    assign sprod    = frame[7:0] * (8+HCOORD_W)'(STRX);
-    assign sweep_on = (x_q >= scol) && (x_q < scol + HCOORD_W'(COLW));
+    assign zprod    = frame[7:0] * SWPRODW'(ZONES);
+    assign sweep_on = (zone_idx == sweep_zone);
 
     always_ff @(posedge clk) begin
         if (rst) begin
             zi_q_reg <= '0;
-            scol     <= '0;
+            sweep_zone <= '0;
             x_q      <= '0;
             y_q      <= '0;
             sub_q    <= '0;
             flash_q  <= 1'b0;
         end else begin
             zi_q_reg <= zi_q;
-            scol     <= sprod[8+HCOORD_W-1:8];
+            sweep_zone <= zprod[SWPRODW-1:8];
             x_q      <= x;
             y_q      <= y;
             sub_q    <= sub;
@@ -123,21 +123,59 @@ module pat_localdim_1d #(
                       ((x_q >= HCOORD_W'(SB2L)) && (x_q < HCOORD_W'(SB2R))) ||
                       ((x_q >= HCOORD_W'(SB3L)) && (x_q < HCOORD_W'(SB3R))));
 
+    // ---- stage 2: register predicates before the final sub-pattern mux ----
+    logic column_on, ywin_on, altzones_on, hband_on, subtitle_on, flash_on, dual_on;
+    assign column_on   = (zone_idx == ZW'(ZC));
+    assign ywin_on     = column_on && in_ywin_y;
+    assign altzones_on = ~zone_idx[0];
+    assign hband_on    = in_hband;
+    assign subtitle_on = in_subt;
+    assign flash_on    = column_on && flash_q;
+    assign dual_on     = (zone_idx == ZW'(ZQ1)) || (zone_idx == ZW'(ZQ3));
+
+    logic [2:0] sub_qq;
+    logic       column_on_q, sweep_on_q, ywin_on_q, altzones_on_q;
+    logic       hband_on_q, subtitle_on_q, flash_on_q, dual_on_q;
+
+    always_ff @(posedge clk) begin
+        if (rst) begin
+            sub_qq        <= '0;
+            column_on_q   <= 1'b0;
+            sweep_on_q    <= 1'b0;
+            ywin_on_q     <= 1'b0;
+            altzones_on_q <= 1'b0;
+            hband_on_q    <= 1'b0;
+            subtitle_on_q <= 1'b0;
+            flash_on_q    <= 1'b0;
+            dual_on_q     <= 1'b0;
+        end else begin
+            sub_qq        <= sub_q;
+            column_on_q   <= column_on;
+            sweep_on_q    <= sweep_on;
+            ywin_on_q     <= ywin_on;
+            altzones_on_q <= altzones_on;
+            hband_on_q    <= hband_on;
+            subtitle_on_q <= subtitle_on;
+            flash_on_q    <= flash_on;
+            dual_on_q     <= dual_on;
+        end
+    end
+
     // ---- sub-pattern mux ----
     always_comb begin
-        case (sub_q)
-            3'd0:    rgb = (zone_idx == ZW'(ZC))                        ? WHITE : BLACK; // COLUMN
-            3'd1:    rgb = sweep_on                                     ? WHITE : BLACK; // SWEEP (smooth)
-            3'd2:    rgb = ((zone_idx == ZW'(ZC)) && in_ywin_y)         ? WHITE : BLACK; // YWIN
-            3'd3:    rgb = zone_idx[0]                                  ? BLACK : WHITE; // ALTZONES (even white)
-            3'd4:    rgb = in_hband                                     ? WHITE : BLACK; // HBAND
-            3'd5:    rgb = in_subt                                      ? WHITE : BLACK; // SUBTITLE
-            3'd6:    rgb = ((zone_idx == ZW'(ZC)) && flash_q)           ? WHITE : BLACK; // FLASH
-            default: rgb = ((zone_idx == ZW'(ZQ1)) || (zone_idx == ZW'(ZQ3))) ? WHITE : BLACK; // DUAL
+        case (sub_qq)
+            3'd0:    rgb = column_on_q   ? WHITE : BLACK; // COLUMN
+            3'd1:    rgb = sweep_on_q    ? WHITE : BLACK; // SWEEP
+            3'd2:    rgb = ywin_on_q     ? WHITE : BLACK; // YWIN
+            3'd3:    rgb = altzones_on_q ? WHITE : BLACK; // ALTZONES (even white)
+            3'd4:    rgb = hband_on_q    ? WHITE : BLACK; // HBAND
+            3'd5:    rgb = subtitle_on_q ? WHITE : BLACK; // SUBTITLE
+            3'd6:    rgb = flash_on_q    ? WHITE : BLACK; // FLASH
+            default: rgb = dual_on_q     ? WHITE : BLACK; // DUAL
         endcase
     end
 
     // unused for lint: high frame bits, and the fractional (low) product bits.
     logic _unused;
-    assign _unused = &{1'b0, frame[FRAME_W-1:8], zi_prod[ZFRAC-1:0], sprod[7:0]};
+    assign _unused = &{1'b0, frame[FRAME_W-1:8], zi_prod[ZFRAC-1:0], zprod[7:0]};
 endmodule

@@ -58,8 +58,9 @@
     .V_ACTIVE(720),  .V_FP(3),   .V_SYNC(5),   .V_BP(14),  \
     .HSYNC_POL(1'b1), .VSYNC_POL(1'b0)
 
-// 2560x1440p60 reduced-blank — 15.6" panel, 47-LED bottom bar. ~241.7 MHz pixel
-// (~1.21 GHz serial). Build the 1D patterns with ZONES=47. H+,V- sync.
+// 2560x1440p60 reduced-blank — 15.6" panel, 47-LED bottom bar. Exact 60 Hz is
+// ~241.7 MHz pixel; the Arty Z7 stress build uses 240.000 MHz (59.58 Hz) so the
+// MMCM VCO stays at 1200 MHz. Build the 1D patterns with ZONES=47. H+,V- sync.
 `define VMODE_2560x1440p60 \
     .H_ACTIVE(2560), .H_FP(48),  .H_SYNC(32),  .H_BP(80),  \
     .V_ACTIVE(1440), .V_FP(3),   .V_SYNC(5),   .V_BP(33),  \

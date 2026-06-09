@@ -48,8 +48,6 @@ module tb_pattern_core #(
     localparam int HB_T = V / 8;
     localparam int HB_M = (V - HB_H) / 2;
     localparam int HB_B = V - HB_H - V / 8;
-    localparam int LD1COLW = (H / ZN < 1) ? 1 : H / ZN;     // smooth-sweep column width
-    localparam int LD1STRX = (H - LD1COLW < 1) ? 1 : H - LD1COLW;
     localparam int LD1_INV_ZONE = (ZN * (1 << 12) + H / 2) / H;  // zone reciprocal (ZFRAC=12)
 
     logic clk = 1'b0;
@@ -160,9 +158,10 @@ module tb_pattern_core #(
                 23: begin // LD_FLASH
                         if ((frm >> 5) & 1) begin r = 8'hFF; g = 8'hFF; b = 8'hFF; end
                     end
-                25: begin // LD1D_SWEEP (smooth: one-zone column glides L->R)
-                        sel = ((frm & 255) * LD1STRX) >> 8;   // scol
-                        if (x >= sel && x < sel + LD1COLW) begin r=8'hFF; g=8'hFF; b=8'hFF; end
+                25: begin // LD1D_SWEEP (timing-safe one-zone step per selected zone)
+                        zidx = (x * LD1_INV_ZONE) >> 12; if (zidx > ZN - 1) zidx = ZN - 1;
+                        sel = ((frm & 255) * ZN) >> 8;
+                        if (zidx == sel) begin r=8'hFF; g=8'hFF; b=8'hFF; end
                     end
                 24, 26, 27, 30, 31: begin // 1D zone-index patterns: floor(x*ZONES/H)
                         zidx = (x * LD1_INV_ZONE) >> 12; if (zidx > ZN - 1) zidx = ZN - 1;

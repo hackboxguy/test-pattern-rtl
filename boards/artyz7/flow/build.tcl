@@ -84,8 +84,15 @@ switch -- $res {
         set ser_mhz "742.1875"
         set ppm "-421"
     }
+    "1440p" {
+        lappend defines "BUILD_1440P"
+        set label "2560x1440p59.58_RB"
+        set pix_mhz "240.000"
+        set ser_mhz "1200.000"
+        set ppm "-7030"
+    }
     default {
-        puts "ERROR: RES must be 480p, 800x600, 1024x768, 720p, or 1080p (got '$res')"
+        puts "ERROR: RES must be 480p, 800x600, 1024x768, 720p, 1080p, or 1440p (got '$res')"
         exit 2
     }
 }

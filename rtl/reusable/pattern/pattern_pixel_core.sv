@@ -8,7 +8,7 @@
 // from rtl/reusable/pattern/patterns/ and muxed by the stable pattern IDs in
 // pattern_ids.svh. Disabled / not-yet-implemented IDs return black (FR-ABI-2).
 //
-// Contract (FR-CORE-4): fixed PATTERN_LATENCY (= 2); emits rgb / de_mask_out
+// Contract (FR-CORE-4): fixed PATTERN_LATENCY (= 4); emits rgb / de_mask_out
 // ONLY. Sideband alignment is owned by the Tier 1/2 wrapper (video_source_core).
 //
 // M1 scope: patterns use the compile-time H_ACTIVE/V_ACTIVE parameters (Mode A),
@@ -53,7 +53,7 @@ module pattern_pixel_core #(
     output logic [PIXELS_PER_CLOCK-1:0]           de_mask_out
 );
 
-    localparam int PATTERN_LATENCY = 2;  // fixed Tier 0 latency (PRD FR-CORE-4)
+    localparam int PATTERN_LATENCY = 4;  // fixed Tier 0 latency (PRD FR-CORE-4)
 
     // v1 restricts to one pixel per clock (PRD §8.1, FR-CORE-3).
     if (PIXELS_PER_CLOCK != 1) begin : g_ppc_guard
@@ -119,15 +119,6 @@ module pattern_pixel_core #(
                .PITCH_LOG2(GRID_PITCH_LOG2), .LINE_W(GRID_LINE_W))
         u_grid (.x(x0_s1), .y(y_s1), .rgb(grid_rgb));
 
-    // ---- grayscale staircase: quantize the horizontal ramp value to 2^STAIR_BITS
-    //      steps (top STAIR_BITS bits replicated). Reuses the ramp_h datapath. ----
-    logic [COLOR_W-1:0]   ramp_val;   // horizontal ramp value (B channel of ramp_h)
-    logic [COLOR_W-1:0]   stair_val;
-    logic [3*COLOR_W-1:0] stair_rgb;
-    assign ramp_val  = ramph_rgb[COLOR_W-1:0];
-    assign stair_val = {(COLOR_W/STAIR_BITS){ramph_rgb[COLOR_W-1 -: STAIR_BITS]}};
-    assign stair_rgb = {stair_val, stair_val, stair_val};
-
     // ---- local-dimming benchmark family (PAT_LD_*; sub = id - PAT_LD_WINDOW) ----
     // Reuses the ramp_h/ramp_v normalized values (no extra multipliers) and the
     // frame counter for motion/temporal patterns.
@@ -136,7 +127,7 @@ module pattern_pixel_core #(
     assign ld_sub = 3'(pattern_sel_s1 - PATSEL_W'(`PAT_LD_WINDOW));
     pat_localdim #(.COLOR_W(COLOR_W), .HCOORD_W(HCOORD_W), .VCOORD_W(VCOORD_W),
                    .FRAME_W(FRAME_W), .H_ACTIVE(H_ACTIVE), .V_ACTIVE(V_ACTIVE))
-        u_localdim (.x(x0_s1), .y(y_s1), .frame(frame_s1),
+        u_localdim (.clk(clk), .rst(rst), .x(x0_s1), .y(y_s1), .frame(frame_s1),
                     .norm_x(ramph_rgb[COLOR_W-1:0]), .norm_y(rampv_rgb[COLOR_W-1:0]),
                     .sub(ld_sub), .rgb(ld_rgb));
 
@@ -150,10 +141,92 @@ module pattern_pixel_core #(
         u_localdim_1d (.clk(clk), .rst(rst), .x(x0), .y(y), .frame(frame),
                        .sub(ld1d_sub), .rgb(ld1d_rgb));
 
+    // ---- stage 2: register pattern candidates before the final mux ----
+    logic                                  de_s2;
+    logic [PIXELS_PER_CLOCK-1:0]           de_mask_s2;
+    logic                                  pat_en_s2;
+    logic [PATSEL_W-1:0]                   pattern_sel_s2;
+    logic [3*COLOR_W-1:0]                  bars_rgb_s2, ramph_rgb_s2, rampv_rgb_s2;
+    logic [3*COLOR_W-1:0]                  checker_rgb_s2, checker1_rgb_s2, grid_rgb_s2;
+
+    always_ff @(posedge clk) begin
+        if (rst) begin
+            de_s2          <= 1'b0;
+            de_mask_s2     <= '0;
+            pat_en_s2      <= 1'b0;
+            pattern_sel_s2 <= '0;
+            bars_rgb_s2    <= '0;
+            ramph_rgb_s2   <= '0;
+            rampv_rgb_s2   <= '0;
+            checker_rgb_s2 <= '0;
+            checker1_rgb_s2 <= '0;
+            grid_rgb_s2    <= '0;
+        end else begin
+            de_s2          <= de_s1;
+            de_mask_s2     <= de_mask_s1;
+            pat_en_s2      <= pat_en_s1;
+            pattern_sel_s2 <= pattern_sel_s1;
+            bars_rgb_s2    <= bars_rgb;
+            ramph_rgb_s2   <= ramph_rgb;
+            rampv_rgb_s2   <= rampv_rgb;
+            checker_rgb_s2 <= checker_rgb;
+            checker1_rgb_s2 <= checker1_rgb;
+            grid_rgb_s2    <= grid_rgb;
+        end
+    end
+
+    // ---- stage 3: align the internally pipelined local-dimming outputs ----
+    logic                                  de_s3;
+    logic [PIXELS_PER_CLOCK-1:0]           de_mask_s3;
+    logic                                  pat_en_s3;
+    logic [PATSEL_W-1:0]                   pattern_sel_s3;
+    logic [3*COLOR_W-1:0]                  bars_rgb_s3, ramph_rgb_s3, rampv_rgb_s3;
+    logic [3*COLOR_W-1:0]                  checker_rgb_s3, checker1_rgb_s3, grid_rgb_s3;
+    logic [3*COLOR_W-1:0]                  ld_rgb_s3, ld1d_rgb_s3;
+
+    always_ff @(posedge clk) begin
+        if (rst) begin
+            de_s3           <= 1'b0;
+            de_mask_s3      <= '0;
+            pat_en_s3       <= 1'b0;
+            pattern_sel_s3  <= '0;
+            bars_rgb_s3     <= '0;
+            ramph_rgb_s3    <= '0;
+            rampv_rgb_s3    <= '0;
+            checker_rgb_s3  <= '0;
+            checker1_rgb_s3 <= '0;
+            grid_rgb_s3     <= '0;
+            ld_rgb_s3       <= '0;
+            ld1d_rgb_s3     <= '0;
+        end else begin
+            de_s3           <= de_s2;
+            de_mask_s3      <= de_mask_s2;
+            pat_en_s3       <= pat_en_s2;
+            pattern_sel_s3  <= pattern_sel_s2;
+            bars_rgb_s3     <= bars_rgb_s2;
+            ramph_rgb_s3    <= ramph_rgb_s2;
+            rampv_rgb_s3    <= rampv_rgb_s2;
+            checker_rgb_s3  <= checker_rgb_s2;
+            checker1_rgb_s3 <= checker1_rgb_s2;
+            grid_rgb_s3     <= grid_rgb_s2;
+            ld_rgb_s3       <= ld_rgb;
+            ld1d_rgb_s3     <= ld1d_rgb;
+        end
+    end
+
+    // ---- grayscale staircase: quantize the horizontal ramp value to 2^STAIR_BITS
+    //      steps (top STAIR_BITS bits replicated). Reuses the ramp_h datapath. ----
+    logic [COLOR_W-1:0]   ramp_val;   // horizontal ramp value (B channel of ramp_h)
+    logic [COLOR_W-1:0]   stair_val;
+    logic [3*COLOR_W-1:0] stair_rgb;
+    assign ramp_val  = ramph_rgb_s3[COLOR_W-1:0];
+    assign stair_val = {(COLOR_W/STAIR_BITS){ramph_rgb_s3[COLOR_W-1 -: STAIR_BITS]}};
+    assign stair_rgb = {stair_val, stair_val, stair_val};
+
     // ---- mux by stable pattern ID ----
     logic [3*COLOR_W-1:0] pix;
     always_comb begin
-        unique case (pattern_sel_s1)
+        unique case (pattern_sel_s3)
             PATSEL_W'(`PAT_WHITE):       pix = {CH_HI, CH_HI, CH_HI};
             PATSEL_W'(`PAT_RED):         pix = {CH_HI, CH_LO, CH_LO};
             PATSEL_W'(`PAT_GREEN):       pix = {CH_LO, CH_HI, CH_LO};
@@ -161,12 +234,12 @@ module pattern_pixel_core #(
             PATSEL_W'(`PAT_GRAY25):      pix = {G25, G25, G25};
             PATSEL_W'(`PAT_GRAY50):      pix = {G50, G50, G50};
             PATSEL_W'(`PAT_GRAY75):      pix = {G75, G75, G75};
-            PATSEL_W'(`PAT_COLOR_BARS):  pix = bars_rgb;
-            PATSEL_W'(`PAT_RAMP_H):      pix = ramph_rgb;
-            PATSEL_W'(`PAT_RAMP_V):      pix = rampv_rgb;
-            PATSEL_W'(`PAT_CHECKER):     pix = checker_rgb;
-            PATSEL_W'(`PAT_CHECKER_1PX): pix = checker1_rgb;
-            PATSEL_W'(`PAT_GRID):        pix = grid_rgb;
+            PATSEL_W'(`PAT_COLOR_BARS):  pix = bars_rgb_s3;
+            PATSEL_W'(`PAT_RAMP_H):      pix = ramph_rgb_s3;
+            PATSEL_W'(`PAT_RAMP_V):      pix = rampv_rgb_s3;
+            PATSEL_W'(`PAT_CHECKER):     pix = checker_rgb_s3;
+            PATSEL_W'(`PAT_CHECKER_1PX): pix = checker1_rgb_s3;
+            PATSEL_W'(`PAT_GRID):        pix = grid_rgb_s3;
             PATSEL_W'(`PAT_STAIRCASE):   pix = stair_rgb;
             PATSEL_W'(`PAT_RAMP_R):      pix = {ramp_val, CH_LO,    CH_LO};    // red-only
             PATSEL_W'(`PAT_RAMP_G):      pix = {CH_LO,    ramp_val, CH_LO};    // green-only
@@ -176,7 +249,7 @@ module pattern_pixel_core #(
             PATSEL_W'(`PAT_LD_CHECKER_ZONE),
             PATSEL_W'(`PAT_LD_NEARBLACK),
             PATSEL_W'(`PAT_LD_SUBTITLE),
-            PATSEL_W'(`PAT_LD_FLASH):    pix = ld_rgb;   // 2D local-dimming family
+            PATSEL_W'(`PAT_LD_FLASH):    pix = ld_rgb_s3;   // 2D local-dimming family
             PATSEL_W'(`PAT_LD1D_COLUMN),
             PATSEL_W'(`PAT_LD1D_SWEEP),
             PATSEL_W'(`PAT_LD1D_YWIN),
@@ -184,21 +257,21 @@ module pattern_pixel_core #(
             PATSEL_W'(`PAT_LD1D_HBAND),
             PATSEL_W'(`PAT_LD1D_SUBTITLE),
             PATSEL_W'(`PAT_LD1D_FLASH),
-            PATSEL_W'(`PAT_LD1D_DUAL):   pix = ld1d_rgb; // 1D edge-bar local-dimming family
+            PATSEL_W'(`PAT_LD1D_DUAL):   pix = ld1d_rgb_s3; // 1D edge-bar local-dimming family
             default:                     pix = {CH_LO, CH_LO, CH_LO}; // PAT_BLACK + disabled IDs
         endcase
         // Blanking pixels are black (FR-SB-3); disabled core is black.
-        if (!pat_en_s1 || !de_s1) pix = '0;
+        if (!pat_en_s3 || !de_s3) pix = '0;
     end
 
-    // Registered output -> PATTERN_LATENCY = 2.
+    // Registered output -> PATTERN_LATENCY = 4.
     always_ff @(posedge clk) begin
         if (rst) begin
             rgb         <= '0;
             de_mask_out <= '0;
         end else begin
             rgb         <= pix;
-            de_mask_out <= de_mask_s1;
+            de_mask_out <= de_mask_s3;
         end
     end
 

@@ -26,7 +26,12 @@ module top_artyz7 (
 );
     // Mode-selected MMCM values from a 125 MHz input. CLKOUT0 is the 5x TMDS
     // serializer clock; CLKOUT1 is the pixel clock.
-`ifdef BUILD_1080P
+`ifdef BUILD_1440P
+    localparam real MMCM_MULT_F  = 48.000; // VCO 1200.0 MHz
+    localparam int  MMCM_DIVCLK  = 5;
+    localparam real MMCM_SER_DIV = 1.000;  // 1200.0 MHz
+    localparam int  MMCM_PIX_DIV = 5;      // 240.0 MHz
+`elsif BUILD_1080P
     localparam real MMCM_MULT_F  = 59.375; // VCO 742.1875 MHz
     localparam int  MMCM_DIVCLK  = 10;
     localparam real MMCM_SER_DIV = 1.000;  // 742.1875 MHz
@@ -101,7 +106,9 @@ module top_artyz7 (
     logic [23:0] rgb;
 
     video_source_core #(
-`ifdef BUILD_1080P
+`ifdef BUILD_1440P
+        `VMODE_2560x1440p60,
+`elsif BUILD_1080P
         `VMODE_1920x1080p60,
 `elsif BUILD_720P
         `VMODE_1280x720p60,

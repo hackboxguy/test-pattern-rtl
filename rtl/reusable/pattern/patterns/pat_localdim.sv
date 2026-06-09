@@ -22,6 +22,8 @@ module pat_localdim #(
     parameter int H_ACTIVE = 640,
     parameter int V_ACTIVE = 480
 )(
+    input  logic                   clk,
+    input  logic                   rst,      // active-high, synchronous
     input  logic [HCOORD_W-1:0]  x,
     input  logic [VCOORD_W-1:0]  y,
     input  logic [FRAME_W-1:0]   frame,
@@ -104,15 +106,40 @@ module pat_localdim #(
     logic _unused_frame;
     assign _unused_frame = &{1'b0, frame[FRAME_W-1:HCOORD_W]};
 
+    // ---- stage 1: register predicates before the final sub-pattern mux ----
+    logic [2:0]         sub_q;
+    logic               win_q, mwin_q, zone_chk_q, sub_on_q, flash_q;
+    logic [COLOR_W-1:0] nb_val_q;
+
+    always_ff @(posedge clk) begin
+        if (rst) begin
+            sub_q      <= '0;
+            win_q      <= 1'b0;
+            mwin_q     <= 1'b0;
+            zone_chk_q <= 1'b0;
+            nb_val_q   <= '0;
+            sub_on_q   <= 1'b0;
+            flash_q    <= 1'b0;
+        end else begin
+            sub_q      <= sub;
+            win_q      <= win;
+            mwin_q     <= mwin;
+            zone_chk_q <= zone_chk;
+            nb_val_q   <= nb_val;
+            sub_on_q   <= sub_on;
+            flash_q    <= flash;
+        end
+    end
+
     // ---- sub-pattern mux ----
     always_comb begin
-        case (sub)
-            3'd0:    rgb = win      ? WHITE : BLACK;
-            3'd1:    rgb = mwin     ? WHITE : BLACK;
-            3'd2:    rgb = zone_chk ? WHITE : BLACK;
-            3'd3:    rgb = {nb_val, nb_val, nb_val};
-            3'd4:    rgb = sub_on   ? WHITE : BLACK;
-            3'd5:    rgb = flash    ? WHITE : BLACK;
+        case (sub_q)
+            3'd0:    rgb = win_q      ? WHITE : BLACK;
+            3'd1:    rgb = mwin_q     ? WHITE : BLACK;
+            3'd2:    rgb = zone_chk_q ? WHITE : BLACK;
+            3'd3:    rgb = {nb_val_q, nb_val_q, nb_val_q};
+            3'd4:    rgb = sub_on_q   ? WHITE : BLACK;
+            3'd5:    rgb = flash_q    ? WHITE : BLACK;
             default: rgb = BLACK;
         endcase
     end

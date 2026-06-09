@@ -1,11 +1,35 @@
 # Handover: add a Xilinx Zynq board (clean-HDMI RTL validation)
 
-Date: 2026-06-09 · Status: **planning / not started** · For: the next Claude Code session.
-Rev 2 — refined per `docs/codex-zynq-handover-review.md` (explicit pin/clocking/flow
-contracts, channel map, button polarity, exact mode clocks, first-PR boundary).
+Date: 2026-06-09 · Status: **implemented / hardware-clean through 1440p**.
+Rev 3 — captures the stable Arty Z7-20 stage after bring-up.
 
-This is a self-contained handover so a fresh session can add a second board to
-`test-pattern-rtl` and continue without re-deriving context.
+This file started as a self-contained handover for adding a second board to
+`test-pattern-rtl`. The original plan is retained below as historical context;
+the current stable state is summarized first so a fresh session can continue
+without re-deriving what already worked.
+
+## Current stable state
+
+- Board: Digilent Arty Z7-20, `xc7z020clg400-1`, PL-only HDMI source.
+- Implemented under `boards/artyz7/`: MMCM clock wrapper, OSERDESE2/OBUFDS TMDS
+  lane wrapper, top-level HDMI source, XDC, Vivado Tcl flow, and shell wrapper.
+- Programming over JTAG/SRAM works with:
+  `openFPGALoader -b arty_z7_20 boards/artyz7/build/<RES>/top_artyz7.bit`.
+- Hardware validation is clean for `1080p` and `1440p`; all 32 patterns were
+  visually checked clean on a 2560x1440 monitor. The 1440p pass used `ZONES=47`.
+- Latest validated 1440p build: `2560x1440p59.58_RB`, 240.000 MHz pixel,
+  1200.000 MHz TMDS serial, setup WNS `0.313 ns`, hold WHS `0.134 ns`,
+  critical/error DRC count `0`.
+- Full 1440p timing still reports an OSERDESE2 pulse-width/min-period violation
+  on the 1200 MHz serial clock. The strict gate intentionally checks setup/hold
+  and critical/error DRCs; keep the pulse-width caveat visible for 1440p testing.
+- Pattern 25 (`LD1D_SWEEP`) is currently a timing-safe zone-stepped sweep, not a
+  pixel-smooth sweep. At `ZONES=47` it advances through all zones in 256 frames
+  (~4.3 s at 59.58 Hz), so it can look fast/stepped. Slowing the frame phase is
+  the next planned tweak.
+- The Arty Z7 shell wrapper now supports both native Linux Vivado and WSL2 with
+  Windows Vivado. `build.tcl` is portable Vivado Tcl; `build.sh` selects native
+  `vivado` when available, otherwise falls back to `VIVADO_BAT`.
 
 ## Why we're doing this
 

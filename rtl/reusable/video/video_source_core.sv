@@ -53,7 +53,7 @@ module video_source_core #(
     output logic [FRAME_W-1:0]      frame,
     output logic [3*COLOR_W-1:0]    rgb
 );
-    localparam int PAT_LAT = 2;  // MUST match pattern_pixel_core PATTERN_LATENCY
+    localparam int PAT_LAT = 4;  // MUST match pattern_pixel_core PATTERN_LATENCY
 
     // The output active coordinates x0/y must fit their width (FR-CORE-6); a very
     // wide/tall panel needs HCOORD_W/VCOORD_W widened (e.g. 27" 4032-wide needs 13).

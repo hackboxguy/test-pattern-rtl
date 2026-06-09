@@ -112,7 +112,9 @@ faster board): `1920x720`/40-LED, `2560x1440`/47-LED.
   are stubs; recovered-clock topology with abrupt switch-over (PRD §8.7–8.8).
 - **AXIS Video** wrapper (stub), CSR/UART/I²C control adapters (stub).
 - Formal checks (SymbiYosys); ramp as a line-accumulator (Codex v2 #5, not done).
-- A **true-LVDS / faster-serializer board** to get clean 720p/1080p (same RTL).
+- A **true-LVDS / faster-serializer board** to get clean 720p/1080p (same RTL) and
+  to separate Tang Nano ELVDS limits from RTL bugs — planned: **Arty Z7-20** via
+  Vivado. Handover: [docs/zynq-board-support-handover.md](docs/zynq-board-support-handover.md).
 
 ## Conventions
 

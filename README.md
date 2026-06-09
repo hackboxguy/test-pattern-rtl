@@ -5,23 +5,34 @@ A hardware-agnostic, synthesizable RTL core that procedurally generates display
 validating displays of arbitrary resolution on any FPGA.
 
 The reusable core has **no vendor primitives** — device-specific logic (PLLs,
-TMDS/DVI serializers, capture PHYs) lives in thin board wrappers. First target is
-the **Sipeed Tang Nano 9K** (HDMI out via DVI/TMDS); later boards add external
-capture (HDMI/FPDLink/GMSL/eDP/LVDS) for genlock/insertion.
+TMDS/DVI serializers, capture PHYs) lives in thin board wrappers. Current board
+targets are the **Sipeed Tang Nano 9K** (OSS Gowin flow, HDMI out via emulated
+LVDS) and the **Digilent Arty Z7-20** (`xc7z020clg400-1`, Vivado flow, true
+TMDS output via OSERDESE2 + OBUFDS).
 
 > **Status: Mode A implemented & hardware-confirmed.** Tier 0/1 core (VTG +
-> 32-pattern set (incl. 2D + 1D local-dimming) + config atomicity) is built and simulation-tested; the Tang
-> Nano 9K HDMI path (DVI/TMDS via Gowin OSER10/ELVDS) runs **clean on real
-> hardware at 480p, 800×600, and 1024×768 (XGA)**. 720p is marginal on the board's
-> emulated-LVDS (PHY rate limit, not the RTL); 1080p is not achievable (rPLL caps
-> at 600 MHz). Mode B / AUTO / AXIS modules are interface stubs (later milestones).
-> See [`CLAUDE.md`](CLAUDE.md) for current status, the PRD for the design spec.
+> 32-pattern set, including 2D + 1D local-dimming patterns, plus config
+> atomicity) is built and simulation-tested. Tang Nano 9K is clean on hardware at
+> 480p, 800×600, and 1024×768/XGA; its 720p artifacts are the board's
+> emulated-LVDS PHY limit, not the RTL. Arty Z7-20/Zynq-7000 is clean on hardware
+> at 1080p and 2560×1440p59.58 (`ZONES=47`) with all 32 patterns. Mode B /
+> AUTO / AXIS modules are interface stubs for later captured-timing insertion
+> milestones. See [`CLAUDE.md`](CLAUDE.md) for current status, the PRD for the
+> design spec.
 
 📄 **Full spec:** [docs/pattern-generator-rtl-prd.md](docs/pattern-generator-rtl-prd.md)
 
-## Getting started: fresh Ubuntu 24.04 → live HDMI patterns
+## Board support
 
-From a blank Ubuntu 24.04 box to test patterns on a screen in ~10 minutes.
+| Board | FPGA | Toolchain | Output path | Hardware status |
+|---|---|---|---|---|
+| Sipeed Tang Nano 9K | Gowin GW1NR-9C | OSS CAD Suite (`yosys`, `nextpnr-himbaechel`, `gowin_pack`) | DVI/TMDS over Gowin OSER10 + ELVDS | Clean through 1024×768/XGA; 720p above PHY margin |
+| Digilent Arty Z7-20 | Xilinx Zynq-7000 `xc7z020clg400-1` | Vivado 2025.1+ | DVI/TMDS over OSERDESE2 + OBUFDS | Clean at 1080p and 2560×1440p59.58 |
+
+The same portable RTL feeds both board wrappers. The Tang Nano is the small,
+fully-OSS baseline; the Arty Z7 is the clean high-rate HDMI validation platform.
+
+## Getting started: Tang Nano 9K
 
 **You need:** a Sipeed **Tang Nano 9K**, a USB-C cable (board ↔ PC), an HDMI
 cable, and a monitor.
@@ -90,6 +101,34 @@ make check      # Verilator lint + Yosys smoke + provenance + self-checking sims
 > Build can't find Yosys/nextpnr → confirm OSS CAD Suite extracted to `~/oss-cad-suite`.
 > Monitor says "no signal" → try `RES=480p` (most compatible) or a different cable/port.
 
+## Getting started: Arty Z7-20 / Zynq-7000
+
+**You need:** a Digilent **Arty Z7-20**, USB cable, HDMI cable, monitor, and
+Vivado with Zynq-7000 device support installed.
+
+The Arty wrapper can run native Linux Vivado when `vivado` is on `PATH` or
+`VIVADO=/path/to/vivado` is set. On WSL2 it can also call Windows Vivado through
+`VIVADO_BAT` (default: `/mnt/c/Xilinx/2025.1/Vivado/bin/vivado.bat`).
+
+```bash
+# Build a clean high-rate validation image.
+make build-artyz7 RES=1440p ZONES=47
+
+# Or use the board wrapper directly.
+./boards/artyz7/flow/build.sh RES=1080p
+./boards/artyz7/flow/build.sh RES=1440p ZONES=47
+
+# Volatile JTAG/SRAM load into the PL.
+openFPGALoader -b arty_z7_20 boards/artyz7/build/1440p/top_artyz7.bit
+```
+
+BTN0 resets the design. BTN1 cycles the 32 patterns. LED0 shows MMCM lock, LED1
+shows HDMI hot-plug present, and LED2/LED3 expose pattern-select bits.
+
+The Arty Z7 build is intentionally PL-only and volatile when loaded with
+`openFPGALoader`. Persistent Zynq boot requires a QSPI `BOOT.BIN` path via the
+Zynq PS/FSBL; that is separate from this reusable pattern-generator RTL.
+
 ## Reusable tiers (copy only what you need)
 
 | Tier | Path | Responsibility |
@@ -105,8 +144,8 @@ make check      # Verilator lint + Yosys smoke + provenance + self-checking sims
 ```
 rtl/reusable/   portable RTL (tiers 0–3)
 rtl/control/    pluggable control adapters
-boards/         per-board wrappers (tier 4) — tangnano9k first
-sim/            cocotb / Verilator tests, golden frames (M1)
+boards/         per-board wrappers (tier 4) — tangnano9k, artyz7
+sim/            Verilator self-checking tests and rendered reference frames
 flow/           lint + provenance scripts, build flows
 docs/           PRD + reviews + coding standards
 third_party/    any vendored permissive code (OUTSIDE rtl/reusable/)
@@ -123,9 +162,9 @@ make sim          # self-checking pattern/VTG sims (incl. odd geometries)
 make provenance   # clean-room / SPDX header check
 ```
 
-## Resolutions & build reference
+## Tang Nano 9K resolutions & build reference
 
-(First build? See the **Getting started** section above for tool install.)
+(First Tang build? See **Getting started: Tang Nano 9K** above for tool install.)
 Resolution is selected by `RES=` on the build:
 
 ```bash
@@ -156,6 +195,30 @@ LEDs) and `2560×1440` (47 LEDs) — have mode profiles in `video_modes.svh` but
 exceed this board's PHY, so they need a faster-serializer board (preview them at
 a clean res on the Tang Nano).
 
+## Arty Z7-20 resolutions & build reference
+
+(First Arty build? See **Getting started: Arty Z7-20 / Zynq-7000** above.)
+
+```bash
+./boards/artyz7/flow/build.sh RES=1080p
+./boards/artyz7/flow/build.sh RES=1440p ZONES=47
+./boards/artyz7/flow/build.sh report
+```
+
+| `RES=` | Mode | pixel / serial clock | Result on Arty Z7-20 |
+|---|---|---|---|
+| `480p` | 640×480p60 | 25.1875 / 125.9375 MHz | safe fallback |
+| `800x600` | 800×600p60 | 40 / 200 MHz | supported |
+| `1024x768` | 1024×768p60 / XGA | 65 / 325 MHz | supported |
+| `720p` | 1280×720p60 | 74.21875 / 371.09375 MHz | supported |
+| `1080p` *(default)* | 1920×1080p60 | 148.4375 / 742.1875 MHz | clean on hardware |
+| `1440p` | 2560×1440p59.58 reduced-blank | 240 / 1200 MHz | clean on hardware with `ZONES=47` |
+
+The validated 1440p build closes setup/hold with WNS `0.313 ns`, WHS `0.134 ns`,
+and zero critical/error DRC violations. The full timing summary still reports an
+OSERDESE2 pulse-width/min-period warning on the 1200 MHz serial clock; this is
+tracked as a stress-mode caveat in [boards/artyz7/README.md](boards/artyz7/README.md).
+
 ### Named-panel profiles (exact fixed timings)
 
 To build for a specific panel's exact timings, add a row to
@@ -176,15 +239,17 @@ display cleanly here). Timings are transcribed from
 > Adding a panel, a generic resolution, or a whole new FPGA/board?
 > See the **[porting & custom-timing guide](docs/porting.md)**.
 
-### Timing & resource report
+### Build reports
 
-Every build prints a timing + resource summary (and saves it to
-`boards/tangnano9k/build/report.txt`). Re-view the last build's report without
-rebuilding:
+Every board build prints a timing + resource summary. Re-view the last report
+without rebuilding:
 
 ```bash
-make report                                   # or:
+make report          # Tang Nano 9K
+make report-artyz7   # Arty Z7-20
+
 ./boards/tangnano9k/flow/build.sh report
+./boards/artyz7/flow/build.sh report
 ```
 
 ```
